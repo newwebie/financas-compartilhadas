@@ -1,0 +1,6 @@
+/.streamlit
+/csv_exportados
+/dados_extraidos.csv
+/extrair_bd.py
+/limpar_bd.py
+/users.db
