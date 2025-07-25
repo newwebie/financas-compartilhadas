@@ -26,7 +26,7 @@ def main():
     try:
         client.admin.command('ping')  # Testa a conexão
         # Nome do banco e da coleção podem vir separados ou ser extraídos da URI, se preferir
-        db_name = "financas"
+        db_name = "cluster0.xrpyf.mongodb.net"
         coll_name = "despesas"
         
         db = client[db_name]
