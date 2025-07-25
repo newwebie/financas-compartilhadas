@@ -1,5 +1,6 @@
-streamlit==1.38.0
-pymongo==4.13.2
+certifi==2024.2.2
 pandas==2.2.3
 plotly==5.24.1
-certifi==2024.8.30
+pymongo==4.11.3
+shareplum==0.5.1
+streamlit==1.45.0
