@@ -11,29 +11,40 @@ def main():
     # Lendo os secrets
     URI = st.secrets["uri"]
 
-    # Inicializa o cliente MongoDB com TLS
+    # Inicializa o cliente MongoDB com configurações otimizadas para MongoDB Atlas
     client = MongoClient(
         URI,
         tls=True,
         tlsCAFile=certifi.where(),
-        tlsAllowInvalidCertificates=False,
-        serverSelectionTimeoutMS=30000
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=30000,
+        socketTimeoutMS=30000
     )
 
     # Verificar conexão e definir a collection
     despesas_collection = None
 
     try:
-        client.admin.command('ping')  # Testa a conexão
-        # Nome do banco e da coleção podem vir separados ou ser extraídos da URI, se preferir
-        db_name = "financas"
+        # Testa a conexão
+        client.admin.command('ping')
+        
+        # Extrair nome do banco da URI
+        # A URI do MongoDB Atlas geralmente tem o formato: mongodb+srv://user:pass@cluster.net/database
+        if "/" in URI.split("@")[-1]:
+            db_name = URI.split("/")[-1].split("?")[0]
+        else:
+            db_name = "financas"  # nome padrão se não estiver na URI
+        
         coll_name = "despesas"
         
         db = client[db_name]
         despesas_collection = db[coll_name]
+        
+        st.success("✅ Conectado ao MongoDB com sucesso!")
 
     except Exception as e:
-        st.error(f"Erro de conexão com o MongoDB: {e}")
+        st.error(f"❌ Erro de conexão com o MongoDB: {e}")
+        st.error("Verifique se a URI está correta e se o cluster está acessível.")
         st.stop()
 
     st.title("📊 Painel Financeiro")
