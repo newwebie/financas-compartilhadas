@@ -9,10 +9,9 @@ import certifi
 def main():
 
     # Lendo os secrets
-    mongo_info = st.secrets["mongo"]
-    URI = f"mongodb+srv://{mongo_info['username']}:{mongo_info['password']}@{mongo_info['host']}/{mongo_info['database']}?retryWrites=true&w=majority"
+    URI = st.secrets["mongo"]["uri"]
 
-    # Usando certifi para garantir o CA SSL correto
+    # Inicializa o cliente MongoDB com TLS
     client = MongoClient(
         URI,
         tls=True,
@@ -21,30 +20,21 @@ def main():
         serverSelectionTimeoutMS=30000
     )
 
-    # Verificar conexão com MongoDB
-    despesas_collection = None  # Definida no escopo da função
+    # Verificar conexão e definir a collection
+    despesas_collection = None
 
     try:
-        # Lendo os secrets
-        mongo_info = st.secrets["mongo"]
-        URI = f"mongodb+srv://{mongo_info['username']}:{mongo_info['password']}@{mongo_info['host']}/{mongo_info['database']}?retryWrites=true&w=majority"
-
-        client = MongoClient(
-            URI,
-            tls=True,
-            tlsCAFile=certifi.where(),
-            tlsAllowInvalidCertificates=False,
-            serverSelectionTimeoutMS=30000
-        )
-
-        client.admin.command('ping')
-        db = client[mongo_info["database"]]
-        despesas_collection = db[mongo_info["collection"]]
+        client.admin.command('ping')  # Testa a conexão
+        # Nome do banco e da coleção podem vir separados ou ser extraídos da URI, se preferir
+        db_name = "financas"
+        coll_name = "despesas"
+        
+        db = client[db_name]
+        despesas_collection = db[coll_name]
 
     except Exception as e:
         st.error(f"Erro de conexão com o MongoDB: {e}")
         st.stop()
-
 
     st.title("📊 Painel Financeiro")
     tabs = st.tabs([ "Novo gasto", "Pietrah", "Susanna"])
@@ -330,18 +320,26 @@ def main():
 
             fig = px.pie(
                 gastos_por_categoria,
-                names="legenda_formatada",
+                names="label",
                 values="total_value",
-                hole=0.5,
-                title="Distribuição de gastos por categoria"
+                hole=0.5
             )
 
             fig.update_traces(
-                text=gastos_por_categoria["percent_texto"],
-                textinfo="text",
-                hovertemplate="%{label}<extra></extra>"
+                textinfo="label+value+percent",  # o que mostrar
+                texttemplate="%{label}<br>R$ %{value:,.2f}<br>%{percent}",  # formatação
+                textposition="outside",         # ← setinha aparece aqui
+                pull=[0.03]*len(gastos_por_categoria),  # opcional: afasta levemente as fatias
+                marker=dict(line=dict(color="#000000", width=0.5))  # opcional: borda sutil
             )
-            fig.update_layout(title_x=0.5)
+
+            fig.update_layout(
+                title="Distribuição de gastos por categoria",
+                title_x=0.5,
+                showlegend=False,  # sem legenda
+                margin=dict(t=40, b=0, l=0, r=0)  # reduz margens
+            )
+
 
             st.plotly_chart(fig, use_container_width=True)
 
@@ -542,28 +540,71 @@ def main():
             gastos_por_categoria["percent_texto"] = gastos_por_categoria["percentual"].apply(lambda x: f"{x:.0%}")
 
             # 🔵 Texto na legenda: categoria + valor formatado
-            gastos_por_categoria["legenda_formatada"] = gastos_por_categoria.apply(
-                lambda row: f"{row['label']} — R$ {row['total_value']:,.2f}", axis=1
+            # --- 1. Percentual e valor formatado ---
+            gastos_por_categoria["pct"] = (
+                gastos_por_categoria["total_value"] / gastos_por_categoria["total_value"].sum()
             )
 
-            # Criar gráfico de rosca
+            def fmt_brl(v):
+                return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            gastos_por_categoria["valor_fmt"] = gastos_por_categoria["total_value"].apply(fmt_brl)
+
+            # Cria a string que vai aparecer NA LEGENDA
+            gastos_por_categoria["legenda"] = gastos_por_categoria.apply(
+                lambda r: f"{r['label']} — {r['valor_fmt']}",
+                axis=1
+            )
+
+            # --- 2. Decide onde o texto vai (fora/dentro) se ainda quiser usar adaptação ---
+            LIMIAR_FORA = 0.06
+            text_positions = ["outside" if p < LIMIAR_FORA else "inside"
+                            for p in gastos_por_categoria["pct"]]
+
+            # Agora SEM R$ no gráfico, só label + %
+            text_templates = [
+                "%{label}<br>%{percent}" if pos == "outside" else "%{percent}"
+                for pos in text_positions
+            ]
+
+            pull_vals = [0.04 if p < LIMIAR_FORA else 0 for p in gastos_por_categoria["pct"]]
+
+            # --- 3. Monta o gráfico usando a coluna 'legenda' como names (gera a legenda bonitinha) ---
             fig = px.pie(
                 gastos_por_categoria,
-                names="legenda_formatada",         # usado para legenda
+                names="legenda",              # <- legenda com label + R$
                 values="total_value",
-                hole=0.5,
-                title="Distribuição de gastos por categoria"
+                hole=0.5
             )
 
             fig.update_traces(
-                text=gastos_por_categoria["percent_texto"],  # texto dentro da rosca
-                textinfo="text",                             # mostrar somente o campo customizado (percentual)
-                hovertemplate="%{label}<extra></extra>"
+                textinfo="none",              # controlaremos via texttemplate
+                textposition=text_positions,
+                texttemplate=text_templates,  # sem R$ aqui
+                insidetextorientation="radial",
+                pull=pull_vals,
+                marker=dict(line=dict(color="white", width=1))
             )
 
-            fig.update_layout(title_x=0.3)
+            fig.update_layout(
+                title="Distribuição de gastos por categoria",
+                title_x=0.5,
+                showlegend=True,              # <- mostra legenda
+                legend_title_text="",         # legenda sem título
+                legend=dict(
+                    orientation="v",
+                    yanchor="middle", y=0.5,
+                    xanchor="left",  x=1.02,  # joga a legenda pra direita do gráfico
+                    font=dict(size=12)
+                ),
+                uniformtext_minsize=11,
+                uniformtext_mode="hide",
+                margin=dict(t=60, b=40, l=40, r=180),  # mais espaço à direita p/ legenda
+                font=dict(size=13)
+            )
 
             st.plotly_chart(fig, use_container_width=True)
+
             st.divider()
 
             # --- Tabela de itens gastos por Susanna com filtro por categoria ---
