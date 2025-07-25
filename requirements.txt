@@ -1,5 +1,5 @@
-certifi==2024.2.2
-pandas==2.2.3
-plotly==5.24.1
-pymongo==4.7.3
-streamlit==1.39.0
+streamlit>=1.30,<2.0
+pymongo[srv]>=4.6
+pandas>=2.2
+plotly>=5.18
+certifi>=2024.2.2

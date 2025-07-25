@@ -136,9 +136,6 @@ def main():
     
     # Despesas Pietrah
     with tabs[1]:
-        import pandas as pd
-        from datetime import date, timedelta
-        import plotly.express as px
 
         st.markdown("<h1 style='text-align: center;'>Situação Financeira: Pietrah</h1>", unsafe_allow_html=True)
 
