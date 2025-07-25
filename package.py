@@ -5,35 +5,33 @@ import pandas as pd
 import plotly.express as px
 import certifi
 
-# Lendo os secrets
-mongo_info = st.secrets["mongo"]
-URI = f"mongodb+srv://{mongo_info['username']}:{mongo_info['password']}@{mongo_info['host']}/{mongo_info['database']}?retryWrites=true&w=majority"
-
-# Usando certifi para garantir o CA SSL correto
-client = MongoClient(
-    URI,
-    tls=True,
-    tlsCAFile=certifi.where(),
-    tlsAllowInvalidCertificates=False,
-    serverSelectionTimeoutMS=30000
-)
-
-# Verificar conexão com MongoDB
-try:
-    client.admin.command('ping')
-    db = client[mongo_info["database"]]
-    despesas_collection = db[mongo_info["collection"]]
-    print("Conexão com o MongoDB estabelecida com sucesso!!")
-except Exception as e:
-    print(f"Erro de conexão com o MongoDB: {e}")
-    SystemExit(1)
-
-
-
-
-
 
 def main():
+
+    # Lendo os secrets
+    mongo_info = st.secrets["mongo"]
+    URI = f"mongodb+srv://{mongo_info['username']}:{mongo_info['password']}@{mongo_info['host']}/{mongo_info['database']}?retryWrites=true&w=majority"
+
+    # Usando certifi para garantir o CA SSL correto
+    client = MongoClient(
+        URI,
+        tls=True,
+        tlsCAFile=certifi.where(),
+        tlsAllowInvalidCertificates=False,
+        serverSelectionTimeoutMS=30000
+    )
+
+    # Verificar conexão com MongoDB
+    try:
+        client.admin.command('ping')
+        db = client[mongo_info["database"]]
+        despesas_collection = db[mongo_info["collection"]]
+        print("Conexão com o MongoDB estabelecida com sucesso!!")
+    except Exception as e:
+        print(f"Erro de conexão com o MongoDB: {e}")
+        SystemExit(1)
+
+
     st.title("📊 Painel Financeiro")
     tabs = st.tabs([ "Novo gasto", "Pietrah", "Susanna"])
 
