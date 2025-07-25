@@ -1,14 +1,20 @@
 import streamlit as st
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import pandas as pd
 import plotly.express as px
 import certifi
-from datetime import date, timedelta
 
+# Lendo os secrets
 MONGODB_URI = st.secrets["MONGODB_URI"]
+MONGODB_DB = st.secrets["MONGODB_DATABASE"]
 
-# Usando certifi para garantir o CA SSL correto
+COLLECTION_DESPESAS = st.secrets["COLLECTION_DESPESAS"]
+COLLECTION_PIETRAH = st.secrets["COLLECTION_PIETRAH"]
+COLLECTION_SUSANNA = st.secrets["COLLECTION_SUSANNA"]
+COLLECTION_PARCELAMENTOS = st.secrets["COLLECTION_PARCELAMENTOS"]
+
+# Conectando ao MongoDB
 client = MongoClient(
     MONGODB_URI,
     tls=True,
@@ -17,18 +23,20 @@ client = MongoClient(
     serverSelectionTimeoutMS=30000
 )
 
-# Verificar conexão com MongoDB
+# Verificando a conexão
 try:
     client.admin.command('ping')
-    db = client['financas']
-    despesas_collection = db['despesas']
-    p_dividas = db['pietrah_debt']
-    s_dividas = db['susanna_debt']
-    parcelamentos = db['installment']
+    db = client[MONGODB_DB]
+
+    despesas_collection = db[COLLECTION_DESPESAS]
+    p_dividas = db[COLLECTION_PIETRAH]
+    s_dividas = db[COLLECTION_SUSANNA]
+    parcelamentos = db[COLLECTION_PARCELAMENTOS]
+
     print("Conexão com o MongoDB estabelecida com sucesso!!")
 except Exception as e:
     print(f"Erro de conexão com o MongoDB: {e}")
-    SystemExit(1)
+    raise SystemExit(1)
 
 
 
@@ -48,7 +56,7 @@ def main():
             compradora  = st.selectbox("User", ["Susanna", "Pietrah"])
             
             label = st.selectbox("Selecione uma categoria", [
-                "Automovéis", "Boa pra família", "Combustível", "Comida", "Contas",
+                "Automovéis", "Bebidas", "Boa pra família", "Combustível", "Comida", "Contas",
                 "Lazer", "Mercado", "Outros", "Vestuario", "Saúde"
             ])
             item        = st.text_input("Item:")
@@ -63,7 +71,7 @@ def main():
             anexo     = st.text_input("Link de anexo:")
 
             # --- Divisão de pagamento ---
-            st.markdown("### Divisão de pagamento entre vocês duas")
+            st.markdown("### Informações adicionais")
             pagamento_compartilhado = st.selectbox("Tipo de Despesa", [
                 "Compra individual",
                 "Nossa",
@@ -136,8 +144,6 @@ def main():
     
     # Despesas Pietrah
     with tabs[1]:
-
-        st.markdown("<h1 style='text-align: center;'>Situação Financeira: Pietrah</h1>", unsafe_allow_html=True)
 
         # 1. Buscar dados da collection (uma única vez)
         df_all = pd.DataFrame(list(despesas_collection.find({})))
