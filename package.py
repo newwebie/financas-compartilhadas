@@ -22,14 +22,28 @@ def main():
     )
 
     # Verificar conexão com MongoDB
+    despesas_collection = None  # Definida no escopo da função
+
     try:
+        # Lendo os secrets
+        mongo_info = st.secrets["mongo"]
+        URI = f"mongodb+srv://{mongo_info['username']}:{mongo_info['password']}@{mongo_info['host']}/{mongo_info['database']}?retryWrites=true&w=majority"
+
+        client = MongoClient(
+            URI,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            tlsAllowInvalidCertificates=False,
+            serverSelectionTimeoutMS=30000
+        )
+
         client.admin.command('ping')
         db = client[mongo_info["database"]]
         despesas_collection = db[mongo_info["collection"]]
-        print("Conexão com o MongoDB estabelecida com sucesso!!")
+
     except Exception as e:
-        print(f"Erro de conexão com o MongoDB: {e}")
-        SystemExit(1)
+        st.error(f"Erro de conexão com o MongoDB: {e}")
+        st.stop()
 
 
     st.title("📊 Painel Financeiro")
