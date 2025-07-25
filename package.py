@@ -9,7 +9,7 @@ import certifi
 def main():
 
     # Lendo os secrets
-    URI = st.secrets["mongo"]["uri"]
+    URI = st.secrets["uri"]
 
     # Inicializa o cliente MongoDB com TLS
     client = MongoClient(
@@ -356,7 +356,6 @@ def main():
         categorias_selecionadas = st.multiselect(
             "Filtrar por categoria",
             options=sorted(categorias_disponiveis),
-            default=sorted(categorias_disponiveis),
             key="p_multiselect_categorias"
         )
 
@@ -381,6 +380,29 @@ def main():
 
         with st.expander("🔽 Clique para ver os itens detalhados"):
             st.dataframe(df_exibicao, use_container_width=True)
+        
+        a_receber_df = df[
+            (df["devedor"] == "Susanna") & 
+            (df["status_pendencia"] == "em aberto")
+        ]
+
+        total_receber = a_receber_df["valor_pendente"].sum()
+
+        # Se houver valores a receber, exibe o expander
+        if not a_receber_df.empty:
+            # Renomear colunas
+            df_mostrar = a_receber_df.rename(columns={
+                "item": "Item",
+                "label": "Categoria",
+                "description": "Descrição",
+                "valor_pendente": "Valor Pendente"
+            })[["Item", "Categoria", "Descrição", "Valor Pendente"]]
+
+            # Formatando valores como moeda brasileira
+            df_mostrar["Valor Pendente"] = df_mostrar["Valor Pendente"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
+            with st.expander(f"🟢 Valores a receber: R$ {total_receber:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")):
+                st.dataframe(df_mostrar, use_container_width=True)
 
 
 
@@ -516,6 +538,8 @@ def main():
             a_receber = df[
                 (df["devedor"] == "Pietrah") & (df["status_pendencia"] == "em aberto")
             ]["valor_pendente"].sum()
+
+            
 
             # --- Mostrar resumo numérico ---
             col1, col2, col3 = st.columns(3)
