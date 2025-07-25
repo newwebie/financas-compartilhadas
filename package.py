@@ -11,29 +11,81 @@ def main():
     # Lendo os secrets
     URI = st.secrets["uri"]
 
-    # Inicializa o cliente MongoDB com configurações otimizadas para MongoDB Atlas
-    client = MongoClient(
-        URI,
-        tls=True,
-        tlsCAFile=certifi.where(),
-        serverSelectionTimeoutMS=30000,
-        connectTimeoutMS=30000,
-        socketTimeoutMS=30000
-    )
+    # Função para tentar diferentes configurações de conexão
+    def connect_mongodb():
+        # Primeira tentativa: configuração padrão
+        try:
+            client = MongoClient(
+                URI,
+                tls=True,
+                tlsCAFile=certifi.where(),
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
+                retryWrites=True,
+                w="majority"
+            )
+            client.admin.command('ping')
+            return client
+        except Exception as e:
+            st.warning(f"Primeira tentativa falhou: {str(e)[:100]}...")
+            
+        # Segunda tentativa: sem verificação de certificados
+        try:
+            client = MongoClient(
+                URI,
+                tls=True,
+                tlsCAFile=certifi.where(),
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
+                tlsAllowInvalidCertificates=True,
+                tlsAllowInvalidHostnames=True,
+                retryWrites=True,
+                w="majority"
+            )
+            client.admin.command('ping')
+            return client
+        except Exception as e:
+            st.warning(f"Segunda tentativa falhou: {str(e)[:100]}...")
+            
+        # Terceira tentativa: configuração mínima
+        try:
+            client = MongoClient(
+                URI,
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000
+            )
+            client.admin.command('ping')
+            return client
+        except Exception as e:
+            st.error(f"Todas as tentativas falharam: {str(e)[:100]}...")
+            return None
+
+    # Inicializa o cliente MongoDB
+    client = connect_mongodb()
 
     # Verificar conexão e definir a collection
     despesas_collection = None
 
+    if client is None:
+        st.error("❌ Não foi possível conectar ao MongoDB após todas as tentativas.")
+        st.error("Verifique se a URI está correta e se o cluster está acessível.")
+        st.stop()
+
     try:
-        # Testa a conexão
-        client.admin.command('ping')
-        
-        # Extrair nome do banco da URI
-        # A URI do MongoDB Atlas geralmente tem o formato: mongodb+srv://user:pass@cluster.net/database
-        if "/" in URI.split("@")[-1]:
-            db_name = URI.split("/")[-1].split("?")[0]
-        else:
-            db_name = "financas"  # nome padrão se não estiver na URI
+        # Extrair nome do banco da URI de forma mais robusta
+        try:
+            # Tenta extrair da URI
+            if "/" in URI.split("@")[-1]:
+                db_name = URI.split("/")[-1].split("?")[0]
+                if not db_name or db_name == "":
+                    db_name = "financas"
+            else:
+                db_name = "financas"
+        except:
+            db_name = "financas"  # nome padrão se houver erro
         
         coll_name = "despesas"
         
@@ -43,8 +95,8 @@ def main():
         st.success("✅ Conectado ao MongoDB com sucesso!")
 
     except Exception as e:
-        st.error(f"❌ Erro de conexão com o MongoDB: {e}")
-        st.error("Verifique se a URI está correta e se o cluster está acessível.")
+        st.error(f"❌ Erro ao acessar o banco de dados: {e}")
+        st.error("Verifique se o nome do banco está correto na URI.")
         st.stop()
 
     st.title("📊 Painel Financeiro")
