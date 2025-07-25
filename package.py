@@ -334,14 +334,16 @@ def main():
             )
 
             fig.update_layout(
-                title="Distribuição de gastos por categoria",
+                title= "",
                 title_x=0.5,
-                showlegend=False,  # sem legenda
-                margin=dict(t=40, b=0, l=0, r=0)  # reduz margens
+                showlegend=False,
+                margin=dict(t=40, b=80, l=40, r=40),  # aumentei as margens inferior e laterais
             )
 
 
             st.plotly_chart(fig, use_container_width=True)
+
+            st.write("Gasto por Categoria")
 
         st.divider()
 
