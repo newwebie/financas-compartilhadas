@@ -6,37 +6,29 @@ import plotly.express as px
 import certifi
 
 # Lendo os secrets
-MONGODB_URI = st.secrets["MONGODB_URI"]
-MONGODB_DB = st.secrets["MONGODB_DATABASE"]
+mongo_info = st.secrets["mongo"]
+URI = f"mongodb+srv://{mongo_info['username']}:{mongo_info['password']}@{mongo_info['host']}/{mongo_info['database']}?retryWrites=true&w=majority"
 
-COLLECTION_DESPESAS = st.secrets["COLLECTION_DESPESAS"]
-COLLECTION_PIETRAH = st.secrets["COLLECTION_PIETRAH"]
-COLLECTION_SUSANNA = st.secrets["COLLECTION_SUSANNA"]
-COLLECTION_PARCELAMENTOS = st.secrets["COLLECTION_PARCELAMENTOS"]
-
-# Conectando ao MongoDB
+# Usando certifi para garantir o CA SSL correto
 client = MongoClient(
-    MONGODB_URI,
+    URI,
     tls=True,
     tlsCAFile=certifi.where(),
     tlsAllowInvalidCertificates=False,
     serverSelectionTimeoutMS=30000
 )
 
-# Verificando a conexão
+# Verificar conexão com MongoDB
 try:
     client.admin.command('ping')
-    db = client[MONGODB_DB]
-
-    despesas_collection = db[COLLECTION_DESPESAS]
-    p_dividas = db[COLLECTION_PIETRAH]
-    s_dividas = db[COLLECTION_SUSANNA]
-    parcelamentos = db[COLLECTION_PARCELAMENTOS]
-
+    db = client[mongo_info["database"]]
+    despesas_collection = db[mongo_info["collection"]]
     print("Conexão com o MongoDB estabelecida com sucesso!!")
 except Exception as e:
     print(f"Erro de conexão com o MongoDB: {e}")
-    raise SystemExit(1)
+    SystemExit(1)
+
+
 
 
 
@@ -57,7 +49,7 @@ def main():
             
             label = st.selectbox("Selecione uma categoria", [
                 "Automovéis", "Bebidas", "Boa pra família", "Combustível", "Comida", "Contas",
-                "Lazer", "Mercado", "Outros", "Vestuario", "Saúde"
+                "Lazer", "Mercado", "Outros", "Vestuario", "Saúde", "Cofrinho"
             ])
             item        = st.text_input("Item:")
             description = st.text_input("Descrição:")
@@ -86,7 +78,14 @@ def main():
 
         if submitted:
             try:
-                valor_total = float(preco * quantidade)
+
+                valor_total_original = float(preco * quantidade)
+
+                # Ajusta o valor se cada uma pagou metade
+                if pagamento_compartilhado == "Cada uma pagou metade":
+                    valor_total = round(valor_total_original / 2, 2)  # valor individual
+                else:
+                    valor_total = valor_total_original
 
                 # Função para gerar campos de pendência fixos
                 def gerar_pendencia(buyer, pagamento_compartilhado):
@@ -137,6 +136,16 @@ def main():
 
                 # Inserir no MongoDB
                 despesas_collection.insert_one(documento)
+
+                if pagamento_compartilhado == "Cada uma pagou metade":
+                    outra_pessoa = "Pietrah" if compradora == "Susanna" else "Susanna"
+
+                    doc_outra = documento.copy()
+                    doc_outra.pop("_id", None)  # Remove o _id para evitar duplicidade
+                    doc_outra["buyer"] = outra_pessoa
+                    doc_outra["registrado_por"] = compradora  # opcional
+
+                    despesas_collection.insert_one(doc_outra)
                 st.success("Gasto registrado com sucesso!")
 
             except Exception as e:
@@ -276,10 +285,13 @@ def main():
             (df["status_pendencia"] == "em aberto")
         ]["valor_pendente"].sum()
 
+
+        st.markdown("<h1 style='text-align: center;'>Situação Financeira: Pietrah</h1>", unsafe_allow_html=True)
+
         col1, col2, col3 = st.columns(3)
         col1.metric("💳 Total Gasto", f"R$ {total_gasto:,.2f}")
-        col2.metric("📤 A Pagar", f"R$ {em_aberto:,.2f}")
-        col3.metric("📥 A Receber", f"R$ {a_receber:,.2f}")
+        col2.metric("🔴 A Pagar", f"R$ {em_aberto:,.2f}")
+        col3.metric("🟢 A Receber", f"R$ {a_receber:,.2f}")
 
         st.divider()
 
@@ -496,8 +508,8 @@ def main():
             # --- Mostrar resumo numérico ---
             col1, col2, col3 = st.columns(3)
             col1.metric("💳 Total Gasto", f"R$ {total_gasto:,.2f}")
-            col2.metric("📤 A Pagar", f"R$ {em_aberto:,.2f}")
-            col3.metric("📥 A Receber", f"R$ {a_receber:,.2f}")
+            col2.metric("🔴 A Pagar", f"R$ {em_aberto:,.2f}")
+            col3.metric("🟢 A Receber", f"R$ {a_receber:,.2f}")
 
             st.divider()
             
