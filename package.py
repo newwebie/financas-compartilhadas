@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from bson import ObjectId
+import certifi
 
 # Configuração da página
 st.set_page_config(
@@ -771,10 +772,10 @@ def main():
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown("#### Susanna pagou")
+                    st.markdown("#### 🌸 Susanna pagou")
                     st.metric("", formatar_brl(su_pagou))
                 with col2:
-                    st.markdown("#### Pietrah pagou")
+                    st.markdown("#### 🦋 Pietrah pagou")
                     st.metric("", formatar_brl(pi_pagou))
                 
                 st.markdown("---")
