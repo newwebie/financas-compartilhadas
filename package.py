@@ -22,182 +22,196 @@ st.markdown("""
     /* Sidebar mobile-friendly */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-        min-width: 250px;
-    }
-    [data-testid="stSidebar"] .block-container {
-        padding-top: 2rem;
-    }
-    
-    /* Menu items styling */
-    .menu-item {
-        padding: 15px 20px;
-        margin: 5px 0;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 16px;
-    }
-    .menu-item:hover {
-        background: rgba(255,255,255,0.1);
-    }
-    .menu-item-active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-width: 200px;
+        max-width: 250px;
     }
     
     /* Cores Susanna - Rosa/Magenta */
     .susanna-card {
         background: linear-gradient(135deg, #e91e63 0%, #ff6090 100%);
-        padding: 20px;
-        border-radius: 15px;
+        padding: 12px;
+        border-radius: 12px;
         color: white;
-        margin: 10px 0;
-        border-left: 5px solid #ff80ab;
+        margin: 5px 0;
+        border-left: 4px solid #ff80ab;
+        font-size: 14px;
     }
-    .susanna-metric {
-        background: linear-gradient(135deg, #880e4f 0%, #c2185b 100%);
-        padding: 15px;
-        border-radius: 15px;
-        border: 2px solid #f48fb1;
+    .susanna-card h4 {
+        margin: 0 0 5px 0;
+        font-size: 14px;
+    }
+    .susanna-card h2 {
+        margin: 0;
+        font-size: 20px;
+    }
+    .susanna-card small {
+        font-size: 11px;
     }
     .susanna-header {
         color: #ff80ab !important;
-        border-bottom: 2px solid #e91e63;
-        padding-bottom: 5px;
+        font-size: 14px;
+        margin: 5px 0;
     }
     
     /* Cores Pietrah - Azul/Cyan */
     .pietrah-card {
         background: linear-gradient(135deg, #0288d1 0%, #4fc3f7 100%);
-        padding: 20px;
-        border-radius: 15px;
+        padding: 12px;
+        border-radius: 12px;
         color: white;
-        margin: 10px 0;
-        border-left: 5px solid #81d4fa;
+        margin: 5px 0;
+        border-left: 4px solid #81d4fa;
+        font-size: 14px;
     }
-    .pietrah-metric {
-        background: linear-gradient(135deg, #01579b 0%, #0277bd 100%);
-        padding: 15px;
-        border-radius: 15px;
-        border: 2px solid #4fc3f7;
+    .pietrah-card h4 {
+        margin: 0 0 5px 0;
+        font-size: 14px;
+    }
+    .pietrah-card h2 {
+        margin: 0;
+        font-size: 20px;
+    }
+    .pietrah-card small {
+        font-size: 11px;
     }
     .pietrah-header {
         color: #4fc3f7 !important;
-        border-bottom: 2px solid #0288d1;
-        padding-bottom: 5px;
+        font-size: 14px;
+        margin: 5px 0;
     }
     
     /* Cards gerais */
-    .stMetric {
-        padding: 15px;
-        border-radius: 15px;
-    }
     .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+        padding: 1rem 0.5rem;
         max-width: 100%;
     }
-    h1, h2, h3 {
+    
+    /* Títulos */
+    .page-title {
+        font-size: 20px;
         text-align: center;
+        margin: 10px 0;
+        padding: 0 10px;
     }
+    .section-title {
+        font-size: 16px;
+        text-align: center;
+        margin: 8px 0;
+    }
+    
     div[data-testid="stExpander"] {
-        border-radius: 15px;
+        border-radius: 10px;
         border: 1px solid #333;
+        font-size: 14px;
     }
     
     /* Box de sucesso - Verde */
     .success-box {
         background: linear-gradient(135deg, #1b5e20 0%, #4caf50 100%);
-        padding: 20px;
-        border-radius: 15px;
+        padding: 15px;
+        border-radius: 12px;
         text-align: center;
         color: white;
-        margin: 10px 0;
+        margin: 8px 0;
         border: 2px solid #81c784;
+        font-size: 14px;
     }
-    
-    /* Box de alerta - Laranja */
-    .warning-box {
-        background: linear-gradient(135deg, #e65100 0%, #ff9800 100%);
-        padding: 20px;
-        border-radius: 15px;
-        text-align: center;
-        color: white;
-        margin: 10px 0;
-        border: 2px solid #ffb74d;
+    .success-box h2 {
+        font-size: 18px;
+        margin: 0;
     }
     
     /* Box de info - Roxo */
     .info-box {
         background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%);
-        padding: 20px;
-        border-radius: 15px;
+        padding: 15px;
+        border-radius: 12px;
         text-align: center;
         color: white;
-        margin: 10px 0;
+        margin: 8px 0;
         border: 2px solid #ba68c8;
+        font-size: 14px;
+    }
+    .info-box h3 {
+        font-size: 14px;
+        margin: 0 0 5px 0;
+    }
+    .info-box h2 {
+        font-size: 20px;
+        margin: 0;
+    }
+    .info-box p {
+        font-size: 12px;
+        margin: 5px 0 0 0;
     }
     
     /* Susanna deve pagar */
     .susanna-deve {
         background: linear-gradient(135deg, #880e4f 0%, #ad1457 100%);
-        padding: 20px;
-        border-radius: 15px;
+        padding: 15px;
+        border-radius: 12px;
         text-align: center;
         color: white;
-        margin: 10px 0;
-        border: 3px solid #f48fb1;
+        margin: 8px 0;
+        border: 2px solid #f48fb1;
+    }
+    .susanna-deve h3 {
+        font-size: 14px;
+        margin: 0 0 5px 0;
+    }
+    .susanna-deve h2 {
+        font-size: 22px;
+        margin: 0;
+    }
+    .susanna-deve p {
+        font-size: 12px;
+        margin: 5px 0 0 0;
     }
     
     /* Pietrah deve pagar */
     .pietrah-deve {
         background: linear-gradient(135deg, #01579b 0%, #0277bd 100%);
-        padding: 20px;
-        border-radius: 15px;
+        padding: 15px;
+        border-radius: 12px;
         text-align: center;
         color: white;
-        margin: 10px 0;
-        border: 3px solid #4fc3f7;
+        margin: 8px 0;
+        border: 2px solid #4fc3f7;
+    }
+    .pietrah-deve h3 {
+        font-size: 14px;
+        margin: 0 0 5px 0;
+    }
+    .pietrah-deve h2 {
+        font-size: 22px;
+        margin: 0;
+    }
+    .pietrah-deve p {
+        font-size: 12px;
+        margin: 5px 0 0 0;
     }
     
     /* Mobile adjustments */
     @media (max-width: 768px) {
         .block-container {
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
-        h1 {
-            font-size: 1.5rem;
-        }
-        h2 {
-            font-size: 1.3rem;
-        }
-        h3 {
-            font-size: 1.1rem;
+            padding: 0.5rem;
         }
     }
     
     /* Radio buttons as menu */
     div[data-testid="stSidebar"] .stRadio > div {
         flex-direction: column;
-        gap: 5px;
+        gap: 3px;
     }
     div[data-testid="stSidebar"] .stRadio > div > label {
         background: rgba(255,255,255,0.05);
-        padding: 12px 15px;
-        border-radius: 10px;
-        margin: 3px 0;
-        cursor: pointer;
-        transition: all 0.2s;
-        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin: 2px 0;
+        font-size: 14px;
     }
     div[data-testid="stSidebar"] .stRadio > div > label:hover {
         background: rgba(255,255,255,0.15);
-    }
-    div[data-testid="stSidebar"] .stRadio > div > label[data-checked="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -282,7 +296,7 @@ def main():
     
     # ========== PÁGINA INÍCIO ==========
     if menu == "🏠 Início":
-        st.markdown("### 👋 Bem-vindas!")
+        st.markdown('<p class="page-title">👋 Bem-vindas!</p>', unsafe_allow_html=True)
         
         # Carregar dados
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
@@ -310,7 +324,7 @@ def main():
             st.markdown("---")
             
             # Gráficos de categoria por pessoa
-            st.markdown("### 📊 Gastos por Categoria - Este Mês")
+            st.markdown('<p class="section-title">📊 Gastos por Categoria</p>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             
@@ -328,9 +342,9 @@ def main():
                                    color_discrete_sequence=cores_susanna)
                     fig_su.update_traces(textposition='outside', textinfo='label+percent',
                                         marker=dict(line=dict(color='#ff80ab', width=2)))
-                    fig_su.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20), height=300,
+                    fig_su.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10), height=200,
                                         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                        font=dict(color='white'))
+                                        font=dict(color='white', size=10))
                     st.plotly_chart(fig_su, use_container_width=True)
                 else:
                     st.info("Sem gastos este mês")
@@ -379,7 +393,7 @@ def main():
     
     # ========== PÁGINA NOVO GASTO ==========
     elif menu == "➕ Novo Gasto":
-        st.markdown("### ➕ Registrar Novo Gasto")
+        st.markdown('<p class="page-title">➕ Novo Gasto</p>', unsafe_allow_html=True)
         
         # Campos fora do form para atualização dinâmica do total
         compradora = st.selectbox("👤 Quem comprou?", ["Susanna", "Pietrah"], key="sel_compradora")
@@ -506,7 +520,7 @@ def main():
     
     # ========== PÁGINA ACERTO DE CONTAS ==========
     elif menu == "🤝 Acerto de Contas":
-        st.markdown("### 🤝 Acerto de Contas")
+        st.markdown('<p class="page-title">🤝 Acerto de Contas</p>', unsafe_allow_html=True)
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
         df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
@@ -562,7 +576,7 @@ def main():
         st.markdown("---")
         
         # Detalhamento das pendências
-        st.markdown("### 📋 Detalhamento - De onde vem cada valor")
+        st.markdown('<p class="section-title">📋 De onde vem cada valor</p>', unsafe_allow_html=True)
         
         # Pendências de despesas compartilhadas
         if not df_logs.empty and "tipo" in df_logs.columns and "status" in df_logs.columns:
@@ -599,7 +613,7 @@ def main():
         st.markdown("---")
         
         # Botão para quitar tudo
-        st.markdown("### 💸 Quitar Pendências")
+        st.markdown('<p class="section-title">💸 Quitar Pendências</p>', unsafe_allow_html=True)
         
         if abs(saldo) > 0.01:
             with st.form("form_quitar"):
@@ -653,7 +667,7 @@ def main():
         if not df_logs.empty and "tipo" in df_logs.columns:
             quitacoes_historico = df_logs[df_logs["tipo"] == "quitacao"]
             if not quitacoes_historico.empty:
-                st.markdown("### 📜 Histórico de Quitações")
+                st.markdown('<p class="section-title">📜 Histórico de Quitações</p>', unsafe_allow_html=True)
                 quitacoes_historico = quitacoes_historico.sort_values("data", ascending=False)
                 
                 for _, row in quitacoes_historico.head(10).iterrows():
@@ -664,7 +678,7 @@ def main():
     
     # ========== PÁGINA EMPRÉSTIMOS ==========
     elif menu == "💸 Empréstimos":
-        st.markdown("### 💸 Empréstimos")
+        st.markdown('<p class="page-title">💸 Empréstimos</p>', unsafe_allow_html=True)
         
         # Novo empréstimo
         with st.expander("➕ Registrar Novo Empréstimo", expanded=False):
@@ -720,7 +734,7 @@ def main():
     
     # ========== PÁGINA METAS ==========
     elif menu == "🎯 Metas":
-        st.markdown("### 🎯 Metas e Orçamento")
+        st.markdown('<p class="page-title">🎯 Metas e Orçamento</p>', unsafe_allow_html=True)
         
         # Seletor de usuário
         usuario_metas = st.selectbox("👤 Visualizar metas de:", ["Susanna", "Pietrah", "Ambas"], key="sel_usuario_metas")
@@ -770,7 +784,7 @@ def main():
             if df_metas_filtrado.empty:
                 st.info(f"📝 Nenhuma meta cadastrada para {usuario_metas}.")
             else:
-                st.markdown(f"### 📊 Progresso do Mês - {usuario_metas}")
+                st.markdown(f'<p class="section-title">📊 Progresso - {usuario_metas}</p>', unsafe_allow_html=True)
                 
                 for _, meta in df_metas_filtrado.iterrows():
                     cat = meta["categoria"]
@@ -796,9 +810,9 @@ def main():
                     st.progress(pct / 100)
                     
                     col1, col2, col3 = st.columns(3)
-                    col1.caption(f"💸 Gasto: {formatar_brl(gasto)}")
-                    col2.caption(f"🎯 Meta: {formatar_brl(limite)}")
-                    col3.caption(f"💰 Resta: {formatar_brl(restante)}")
+                    col1.caption(f"💸: {formatar_brl(gasto)}")
+                    col2.caption(f"🎯: {formatar_brl(limite)}")
+                    col3.caption(f"💰: {formatar_brl(restante)}")
                     
                     if pct >= 100:
                         st.warning("⚠️ Meta ultrapassada!")
@@ -811,7 +825,7 @@ def main():
     
     # ========== PÁGINA GASTOS JUNTAS ==========
     elif menu == "👯 Gastos Juntas":
-        st.markdown("### 👯 Gastos Compartilhados")
+        st.markdown('<p class="page-title">👯 Gastos Compartilhados</p>', unsafe_allow_html=True)
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
         
@@ -837,10 +851,10 @@ def main():
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown("#### 🌸 Susanna pagou")
+                    st.markdown("#### Susanna pagou")
                     st.metric("", formatar_brl(su_pagou))
                 with col2:
-                    st.markdown("#### 🦋 Pietrah pagou")
+                    st.markdown("#### Pietrah pagou")
                     st.metric("", formatar_brl(pi_pagou))
                 
                 st.markdown("---")
@@ -849,10 +863,11 @@ def main():
                 gastos_cat = df_mes.groupby("label")["total_value"].sum().reset_index()
                 
                 if not gastos_cat.empty:
-                    fig = px.pie(gastos_cat, names="label", values="total_value", 
-                                title="📊 Distribuição por Categoria", hole=0.4)
-                    fig.update_traces(textposition='outside', textinfo='label+percent')
-                    fig.update_layout(showlegend=False, margin=dict(t=50, b=20, l=20, r=20))
+                    fig = px.pie(gastos_cat, names="label", values="total_value", hole=0.4)
+                    fig.update_traces(textposition='outside', textinfo='percent')
+                    fig.update_layout(showlegend=True, margin=dict(t=10, b=10, l=10, r=10), height=220,
+                                     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                     font=dict(color='white', size=10), legend=dict(font=dict(size=10)))
                     st.plotly_chart(fig, use_container_width=True)
                 
                 # Lista de gastos
@@ -868,7 +883,7 @@ def main():
     
     # ========== PÁGINA RELATÓRIO ==========
     elif menu == "📊 Relatório":
-        st.markdown("### 📊 Relatório Mensal")
+        st.markdown('<p class="page-title">📊 Relatório Mensal</p>', unsafe_allow_html=True)
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
         
@@ -921,34 +936,31 @@ def main():
             
             if not comparativo.empty:
                 fig = px.bar(comparativo, x="label", y="total_value", color="buyer",
-                            barmode="group", title="📊 Comparativo por Categoria",
+                            barmode="group",
                             color_discrete_map={"Susanna": "#e91e63", "Pietrah": "#0288d1"})
-                fig.update_layout(xaxis_title="", yaxis_title="Valor (R$)", legend_title="",
+                fig.update_layout(xaxis_title="", yaxis_title="", legend_title="", height=220,
                                  paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                 font=dict(color='white'))
-                fig.update_xaxes(gridcolor='#333')
+                                 font=dict(color='white', size=10), margin=dict(t=10, b=10, l=10, r=10))
+                fig.update_xaxes(gridcolor='#333', tickfont=dict(size=9))
                 fig.update_yaxes(gridcolor='#333')
                 st.plotly_chart(fig, use_container_width=True)
             
             # Formas de pagamento
-            st.markdown("#### 💳 Por Forma de Pagamento")
+            st.markdown('<p class="section-title">💳 Por Forma de Pagamento</p>', unsafe_allow_html=True)
             pgto = df_mes.groupby("payment_method")["total_value"].sum().reset_index()
             
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                for _, row in pgto.iterrows():
-                    st.metric(row["payment_method"], formatar_brl(row["total_value"]))
-            with col2:
-                fig = px.pie(pgto, names="payment_method", values="total_value", hole=0.4)
-                fig.update_traces(textposition='inside', textinfo='percent')
-                fig.update_layout(showlegend=True, margin=dict(t=20, b=20, l=20, r=20))
-                st.plotly_chart(fig, use_container_width=True)
+            fig = px.pie(pgto, names="payment_method", values="total_value", hole=0.4)
+            fig.update_traces(textposition='inside', textinfo='percent')
+            fig.update_layout(showlegend=True, margin=dict(t=10, b=10, l=10, r=10), height=200,
+                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                             font=dict(color='white', size=10))
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("📝 Nenhum gasto registrado ainda.")
     
     # ========== PÁGINA EVOLUÇÃO ==========
     elif menu == "📈 Evolução":
-        st.markdown("### 📈 Evolução dos Gastos")
+        st.markdown('<p class="page-title">📈 Evolução dos Gastos</p>', unsafe_allow_html=True)
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
         
@@ -962,11 +974,11 @@ def main():
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=evolucao["mes"], y=evolucao["total_value"],
                                     mode='lines+markers', name='Total',
-                                    line=dict(color='#9c27b0', width=3),
-                                    marker=dict(size=10, color='#ba68c8')))
-            fig.update_layout(title="💰 Evolução Total por Mês", xaxis_title="", yaxis_title="Valor (R$)",
+                                    line=dict(color='#9c27b0', width=2),
+                                    marker=dict(size=6, color='#ba68c8')))
+            fig.update_layout(title="", xaxis_title="", yaxis_title="", height=200,
                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                             font=dict(color='white'))
+                             font=dict(color='white', size=10), margin=dict(t=10, b=10, l=10, r=10))
             fig.update_xaxes(gridcolor='#333')
             fig.update_yaxes(gridcolor='#333')
             st.plotly_chart(fig, use_container_width=True)
@@ -974,14 +986,15 @@ def main():
             st.markdown("---")
             
             # Evolução por pessoa
+            st.markdown('<p class="section-title">Por Pessoa</p>', unsafe_allow_html=True)
             evolucao_pessoa = df_desp.groupby(["mes", "buyer"])["total_value"].sum().reset_index()
             
             fig2 = px.line(evolucao_pessoa, x="mes", y="total_value", color="buyer",
-                          title="📊 Evolução por Pessoa", markers=True,
+                          markers=True,
                           color_discrete_map={"Susanna": "#e91e63", "Pietrah": "#0288d1"})
-            fig2.update_layout(xaxis_title="", yaxis_title="Valor (R$)", legend_title="",
+            fig2.update_layout(xaxis_title="", yaxis_title="", legend_title="", height=200,
                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                              font=dict(color='white'))
+                              font=dict(color='white', size=10), margin=dict(t=10, b=10, l=10, r=10))
             fig2.update_xaxes(gridcolor='#333')
             fig2.update_yaxes(gridcolor='#333')
             st.plotly_chart(fig2, use_container_width=True)
@@ -989,15 +1002,15 @@ def main():
             st.markdown("---")
             
             # Evolução por categoria (top 5)
+            st.markdown('<p class="section-title">Top 5 Categorias</p>', unsafe_allow_html=True)
             top_cats = df_desp.groupby("label")["total_value"].sum().nlargest(5).index.tolist()
             df_top = df_desp[df_desp["label"].isin(top_cats)]
             evolucao_cat = df_top.groupby(["mes", "label"])["total_value"].sum().reset_index()
             
-            fig3 = px.area(evolucao_cat, x="mes", y="total_value", color="label",
-                          title="📈 Top 5 Categorias ao Longo do Tempo")
-            fig3.update_layout(xaxis_title="", yaxis_title="Valor (R$)", legend_title="",
+            fig3 = px.area(evolucao_cat, x="mes", y="total_value", color="label")
+            fig3.update_layout(xaxis_title="", yaxis_title="", legend_title="", height=200,
                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                              font=dict(color='white'))
+                              font=dict(color='white', size=10), margin=dict(t=10, b=10, l=10, r=10))
             fig3.update_xaxes(gridcolor='#333')
             fig3.update_yaxes(gridcolor='#333')
             st.plotly_chart(fig3, use_container_width=True)
