@@ -12,13 +12,41 @@ import certifi
 st.set_page_config(
     page_title="💰 Finanças",
     page_icon="💰",
-    layout="wide",
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
 # CSS customizado para mobile
 st.markdown("""
 <style>
+    /* Sidebar mobile-friendly */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        min-width: 250px;
+    }
+    [data-testid="stSidebar"] .block-container {
+        padding-top: 2rem;
+    }
+    
+    /* Menu items styling */
+    .menu-item {
+        padding: 15px 20px;
+        margin: 5px 0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 16px;
+    }
+    .menu-item:hover {
+        background: rgba(255,255,255,0.1);
+    }
+    .menu-item-active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
     /* Cores Susanna - Rosa/Magenta */
     .susanna-card {
         background: linear-gradient(135deg, #e91e63 0%, #ff6090 100%);
@@ -69,18 +97,10 @@ st.markdown("""
     .block-container {
         padding-top: 1rem;
         padding-bottom: 1rem;
+        max-width: 100%;
     }
     h1, h2, h3 {
         text-align: center;
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    .stTabs [data-baseweb="tab"] {
-        padding: 8px 16px;
-        border-radius: 10px;
     }
     div[data-testid="stExpander"] {
         border-radius: 15px;
@@ -140,6 +160,44 @@ st.markdown("""
         color: white;
         margin: 10px 0;
         border: 3px solid #4fc3f7;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        h1 {
+            font-size: 1.5rem;
+        }
+        h2 {
+            font-size: 1.3rem;
+        }
+        h3 {
+            font-size: 1.1rem;
+        }
+    }
+    
+    /* Radio buttons as menu */
+    div[data-testid="stSidebar"] .stRadio > div {
+        flex-direction: column;
+        gap: 5px;
+    }
+    div[data-testid="stSidebar"] .stRadio > div > label {
+        background: rgba(255,255,255,0.05);
+        padding: 12px 15px;
+        border-radius: 10px;
+        margin: 3px 0;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+    }
+    div[data-testid="stSidebar"] .stRadio > div > label:hover {
+        background: rgba(255,255,255,0.15);
+    }
+    div[data-testid="stSidebar"] .stRadio > div > label[data-checked="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -202,21 +260,28 @@ def main():
     
     colls = get_collections(client)
     
-    st.markdown("# 💰 Finanças")
+    # Menu lateral
+    with st.sidebar:
+        st.markdown("## 💰 Finanças")
+        st.markdown("---")
+        
+        menu = st.radio(
+            "Menu",
+            [
+                "🏠 Início",
+                "➕ Novo Gasto",
+                "🤝 Acerto de Contas",
+                "💸 Empréstimos",
+                "🎯 Metas",
+                "👯 Gastos Juntas",
+                "📊 Relatório",
+                "📈 Evolução"
+            ],
+            label_visibility="collapsed"
+        )
     
-    tabs = st.tabs([
-        "🏠 Início",
-        "➕ Novo Gasto", 
-        "🤝 Acerto de Contas",
-        "💸 Empréstimos",
-        "🎯 Metas",
-        "👯 Gastos Juntas",
-        "📊 Relatório",
-        "📈 Evolução"
-    ])
-    
-    # ========== ABA INÍCIO ==========
-    with tabs[0]:
+    # ========== PÁGINA INÍCIO ==========
+    if menu == "🏠 Início":
         st.markdown("### 👋 Bem-vindas!")
         
         # Carregar dados
@@ -310,10 +375,10 @@ def main():
             else:
                 st.markdown(f'<div class="susanna-deve">Susanna deve {formatar_brl(abs(saldo))} para Pietrah</div>', unsafe_allow_html=True)
         else:
-            st.info("📝 Nenhum gasto registrado ainda. Comece na aba '➕ Novo Gasto'!")
+            st.info("📝 Nenhum gasto registrado ainda. Comece em '➕ Novo Gasto'!")
     
-    # ========== ABA NOVO GASTO ==========
-    with tabs[1]:
+    # ========== PÁGINA NOVO GASTO ==========
+    elif menu == "➕ Novo Gasto":
         st.markdown("### ➕ Registrar Novo Gasto")
         
         # Campos fora do form para atualização dinâmica do total
@@ -439,8 +504,8 @@ def main():
                     st.success("✅ Conta fixa cadastrada!")
                     st.rerun()
     
-    # ========== ABA ACERTO DE CONTAS ==========
-    with tabs[2]:
+    # ========== PÁGINA ACERTO DE CONTAS ==========
+    elif menu == "🤝 Acerto de Contas":
         st.markdown("### 🤝 Acerto de Contas")
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
@@ -597,8 +662,8 @@ def main():
                         if row.get("observacao"):
                             st.write(f"📝 {row['observacao']}")
     
-    # ========== ABA EMPRÉSTIMOS ==========
-    with tabs[3]:
+    # ========== PÁGINA EMPRÉSTIMOS ==========
+    elif menu == "💸 Empréstimos":
         st.markdown("### 💸 Empréstimos")
         
         # Novo empréstimo
@@ -653,8 +718,8 @@ def main():
         else:
             st.info("📝 Nenhum empréstimo registrado ainda.")
     
-    # ========== ABA METAS ==========
-    with tabs[4]:
+    # ========== PÁGINA METAS ==========
+    elif menu == "🎯 Metas":
         st.markdown("### 🎯 Metas e Orçamento")
         
         # Seletor de usuário
@@ -744,8 +809,8 @@ def main():
         else:
             st.info("📝 Crie metas para acompanhar seus gastos!")
     
-    # ========== ABA GASTOS JUNTAS ==========
-    with tabs[5]:
+    # ========== PÁGINA GASTOS JUNTAS ==========
+    elif menu == "👯 Gastos Juntas":
         st.markdown("### 👯 Gastos Compartilhados")
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
@@ -801,8 +866,8 @@ def main():
         else:
             st.info("📝 Nenhum gasto registrado ainda.")
     
-    # ========== ABA RELATÓRIO ==========
-    with tabs[6]:
+    # ========== PÁGINA RELATÓRIO ==========
+    elif menu == "📊 Relatório":
         st.markdown("### 📊 Relatório Mensal")
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
@@ -881,8 +946,8 @@ def main():
         else:
             st.info("📝 Nenhum gasto registrado ainda.")
     
-    # ========== ABA EVOLUÇÃO ==========
-    with tabs[7]:
+    # ========== PÁGINA EVOLUÇÃO ==========
+    elif menu == "📈 Evolução":
         st.markdown("### 📈 Evolução dos Gastos")
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
