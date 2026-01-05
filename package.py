@@ -283,26 +283,27 @@ def main():
     elif menu == "➕ Gasto":
         st.markdown('<p class="page-title">➕ Novo Gasto</p>', unsafe_allow_html=True)
         
-        compradora = st.selectbox("👤 Quem?", ["Susanna", "Pietrah"], key="sel_comp")
-        label = st.selectbox("🏷️ Categoria", ["🍔 Comida", "🛒 Mercado", "⛽ Combustível", "🚗 Automóveis", "🍺 Bebidas", "👗 Vestuário", "💊 Saúde", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra família", "🐷 Cofrinho", "📦 Outros"], key="sel_cat")
-        item = st.text_input("📝 Item", key="txt_item")
-        description = st.text_input("💬 Descrição", key="txt_desc")
+        with st.form("form_novo_gasto", clear_on_submit=True):
+            compradora = st.selectbox("👤 Quem?", ["Susanna", "Pietrah"])
+            label = st.selectbox("🏷️ Categoria", ["🍔 Comida", "🛒 Mercado", "⛽ Combustível", "🚗 Automóveis", "🍺 Bebidas", "👗 Vestuário", "💊 Saúde", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra família", "🐷 Cofrinho", "📦 Outros"])
+            item = st.text_input("📝 Item")
+            description = st.text_input("💬 Descrição")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                quantidade = st.number_input("🔢 Qtd", min_value=1, value=1)
+            with c2:
+                preco = st.number_input("💵 Preço", min_value=0.01, value=1.00, format="%.2f")
+            
+            pagamento = st.selectbox("💳 Pagamento", ["VR", "Débito", "Crédito", "Pix", "Dinheiro"])
+            tipo_despesa = st.selectbox("🤝 Tipo", ["👤 Individual", "👯 Nossa (divide)", "✂️ Metade cada"])
+            parcelas = st.number_input("📅 Parcelas (0=à vista)", min_value=0, value=0)
+            
+            submitted = st.form_submit_button("✅ Salvar Gasto", use_container_width=True)
         
-        c1, c2 = st.columns(2)
-        with c1:
-            quantidade = st.number_input("🔢 Qtd", min_value=1, value=1, key="num_qtd")
-        with c2:
-            preco = st.number_input("💵 Preço", min_value=0.01, value=1.00, format="%.2f", key="num_preco")
-        
-        valor_total = quantidade * preco
-        st.markdown(f"**💰 Total: {fmt(valor_total)}**")
-        
-        pagamento = st.selectbox("💳 Pagamento", ["VR", "Débito", "Crédito", "Pix", "Dinheiro"], key="sel_pgto")
-        tipo_despesa = st.selectbox("🤝 Tipo", ["👤 Individual", "👯 Nossa (divide)", "✂️ Metade cada"], key="sel_tipo")
-        parcelas = st.number_input("📅 Parcelas (0=à vista)", min_value=0, value=0, key="num_parc")
-        
-        if st.button("✅ Salvar Gasto", use_container_width=True, key="btn_salvar"):
+        if submitted:
             try:
+                valor_total = quantidade * preco
                 valor_final = valor_total
                 if "Metade" in tipo_despesa:
                     valor_final = round(valor_total / 2, 2)
@@ -335,7 +336,7 @@ def main():
                     doc2["registrado_por"] = compradora
                     colls["despesas"].insert_one(doc2)
                 
-                st.success("✅ Gasto salvo!")
+                st.success(f"✅ Gasto de {fmt(valor_final)} salvo!")
                 st.balloons()
             except Exception as e:
                 st.error(f"❌ Erro: {e}")
@@ -343,14 +344,17 @@ def main():
         st.markdown("---")
         
         with st.expander("📋 Cadastrar Conta Fixa"):
-            nome_conta = st.text_input("📝 Nome da conta", placeholder="Ex: Aluguel, Internet...", key="cf_nome")
-            valor_conta = st.number_input("💵 Valor", min_value=0.01, value=100.00, format="%.2f", key="cf_valor")
-            dia_vencimento = st.number_input("📅 Dia vencimento", min_value=1, max_value=31, value=10, key="cf_dia")
-            responsavel = st.selectbox("👤 Responsável", ["Susanna", "Pietrah", "Dividido"], key="cf_resp")
-            categoria_conta = st.selectbox("🏷️ Categoria", ["🏠 Aluguel", "💡 Luz", "💧 Água", "📶 Internet", "📱 Celular", "🎬 Streaming", "🏥 Plano de Saúde", "📦 Outros"], key="cf_cat")
-            obs_conta = st.text_input("💬 Observação", key="cf_obs")
+            with st.form("form_conta_fixa", clear_on_submit=True):
+                nome_conta = st.text_input("📝 Nome da conta", placeholder="Ex: Aluguel, Internet...")
+                valor_conta = st.number_input("💵 Valor", min_value=0.01, value=100.00, format="%.2f")
+                dia_vencimento = st.number_input("📅 Dia vencimento", min_value=1, max_value=31, value=10)
+                responsavel = st.selectbox("👤 Responsável", ["Susanna", "Pietrah", "Dividido"])
+                categoria_conta = st.selectbox("🏷️ Categoria", ["🏠 Aluguel", "💡 Luz", "💧 Água", "📶 Internet", "📱 Celular", "🎬 Streaming", "🏥 Plano de Saúde", "📦 Outros"])
+                obs_conta = st.text_input("💬 Observação")
+                
+                cf_submitted = st.form_submit_button("✅ Cadastrar", use_container_width=True)
             
-            if st.button("✅ Cadastrar Conta Fixa", use_container_width=True, key="btn_cf"):
+            if cf_submitted:
                 conta_fixa = {
                     "nome": nome_conta, "valor": valor_conta, "dia_vencimento": dia_vencimento,
                     "responsavel": responsavel, "categoria": categoria_conta, "observacao": obs_conta,
@@ -358,7 +362,6 @@ def main():
                 }
                 colls["contas_fixas"].insert_one(conta_fixa)
                 st.success("✅ Conta fixa cadastrada!")
-                st.rerun()
     
     # ========== ACERTO DE CONTAS ==========
     elif menu == "🤝 Acerto":
@@ -501,9 +504,8 @@ def main():
                 with st.expander(f"📅 {mes.strftime('%B %Y')} | {fmt(total_mes)}"):
                     for _, row in df_mes.iterrows():
                         status_emoji = "🔴" if row["status"] == "em aberto" else "✅"
-                        st.markdown(f"""{status_emoji} **{row['credor']}** → **{row['devedor']}**: {fmt(row['valor'])}  
-                        📝 _{row.get('motivo', 'Sem descrição')}_  
-                        🕐 {row['createdAt'].strftime('%d/%m/%Y %H:%M')}""")
+                        st.markdown(f"{status_emoji} **{row['credor']}** → **{row['devedor']}**: {fmt(row['valor'])}")
+                        st.caption(f"📝 {row.get('motivo', 'Sem descrição')} · 🕐 {row['createdAt'].strftime('%d/%m/%Y %H:%M')}")
                         st.markdown("---")
         else:
             st.info("📝 Nenhum empréstimo registrado.")
@@ -653,63 +655,67 @@ def main():
             
             df_mes = df_desp[df_desp["mes_ano"] == mes_selecionado]
             
-            st.markdown("---")
-            
+            # Total do mês
             total_mes = df_mes["total_value"].sum()
-            st.markdown(f'<div class="info-box"><p>💰 Total do Mês</p><h2>{fmt(total_mes)}</h2></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="info-box"><h2>{fmt(total_mes)}</h2><p>Total do mês</p></div>', unsafe_allow_html=True)
             
+            # Por pessoa
+            st.markdown('<p class="section-title">👤 Por pessoa</p>', unsafe_allow_html=True)
             c1, c2 = st.columns(2)
             
             with c1:
                 su_total = df_mes[df_mes["buyer"] == "Susanna"]["total_value"].sum()
                 st.markdown(f'<div class="su-card"><h4>Susanna</h4><h2>{fmt(su_total)}</h2></div>', unsafe_allow_html=True)
-                
-                su_cat = df_mes[df_mes["buyer"] == "Susanna"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
-                st.markdown('<p class="su-label">Top 3:</p>', unsafe_allow_html=True)
-                for cat, val in su_cat.items():
-                    st.caption(f"🔸 {cat}: {fmt(val)}")
             
             with c2:
                 pi_total = df_mes[df_mes["buyer"] == "Pietrah"]["total_value"].sum()
                 st.markdown(f'<div class="pi-card"><h4>Pietrah</h4><h2>{fmt(pi_total)}</h2></div>', unsafe_allow_html=True)
-                
+            
+            # Top 3
+            st.markdown('<p class="section-title">🏆 Top 3 categorias</p>', unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                su_cat = df_mes[df_mes["buyer"] == "Susanna"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
+                for cat, val in su_cat.items():
+                    st.caption(f"🔸 {cat}: {fmt(val)}")
+            with c2:
                 pi_cat = df_mes[df_mes["buyer"] == "Pietrah"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
-                st.markdown('<p class="pi-label">Top 3:</p>', unsafe_allow_html=True)
                 for cat, val in pi_cat.items():
                     st.caption(f"🔹 {cat}: {fmt(val)}")
             
             st.markdown("---")
             
+            # Gráfico comparativo
             comparativo = df_mes.groupby(["buyer", "label"])["total_value"].sum().reset_index()
             
             if not comparativo.empty:
                 st.markdown('<p class="section-title">📊 Comparativo</p>', unsafe_allow_html=True)
                 fig = px.bar(comparativo, x="label", y="total_value", color="buyer", barmode="group",
                             color_discrete_map={"Susanna": "#e91e63", "Pietrah": "#03a9f4"})
-                fig.update_layout(xaxis_title="", yaxis_title="", legend_title="", height=180,
+                fig.update_layout(xaxis_title="", yaxis_title="", legend_title="", height=140,
                                  paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                 font=dict(color='white', size=9), margin=dict(t=5, b=5, l=5, r=5),
-                                 legend=dict(orientation="h", y=1.15))
-                fig.update_xaxes(gridcolor='#333', tickfont=dict(size=8), tickangle=45)
-                fig.update_yaxes(gridcolor='#333')
+                                 font=dict(color='white', size=7), margin=dict(t=0, b=0, l=0, r=0),
+                                 legend=dict(orientation="h", y=1.15, font=dict(size=7)))
+                fig.update_xaxes(gridcolor='#333', tickfont=dict(size=6), tickangle=45)
+                fig.update_yaxes(gridcolor='#333', showticklabels=False)
                 st.plotly_chart(fig, use_container_width=True)
             
-            st.markdown("---")
-            st.markdown('<p class="section-title">💳 Por Pagamento</p>', unsafe_allow_html=True)
+            # Por forma de pagamento
+            st.markdown('<p class="section-title">💳 Por pagamento</p>', unsafe_allow_html=True)
             pgto = df_mes.groupby("payment_method")["total_value"].sum().reset_index()
             
             fig = px.pie(pgto, names="payment_method", values="total_value", hole=0.4)
             fig.update_traces(textposition='inside', textinfo='percent')
-            fig.update_layout(showlegend=True, margin=dict(t=5, b=5, l=5, r=5), height=160,
+            fig.update_layout(showlegend=True, margin=dict(t=0, b=0, l=0, r=0), height=120,
                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                             font=dict(color='white', size=9))
+                             font=dict(color='white', size=8), legend=dict(font=dict(size=7), orientation="h", y=-0.1))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("📝 Nenhum gasto registrado.")
     
     # ========== EVOLUÇÃO ==========
     elif menu == "📈 Evolução":
-        st.markdown('<p class="page-title">📈 Evolução dos Gastos</p>', unsafe_allow_html=True)
+        st.markdown('<p class="page-title">📈 Evolução</p>', unsafe_allow_html=True)
         
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
         
@@ -717,48 +723,51 @@ def main():
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
             df_desp["mes"] = df_desp["createdAt"].dt.to_period("M").astype(str)
             
+            # Total por mês
+            st.markdown('<p class="section-title">💰 Total por mês</p>', unsafe_allow_html=True)
             evolucao = df_desp.groupby("mes")["total_value"].sum().reset_index()
             
-            st.markdown('<p class="section-title">💰 Total por Mês</p>', unsafe_allow_html=True)
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=evolucao["mes"], y=evolucao["total_value"],
                                     mode='lines+markers', name='Total',
                                     line=dict(color='#9c27b0', width=2),
-                                    marker=dict(size=6, color='#ba68c8')))
-            fig.update_layout(height=160, margin=dict(t=5, b=5, l=5, r=5),
+                                    marker=dict(size=5, color='#ba68c8')))
+            fig.update_layout(height=120, margin=dict(t=0, b=0, l=0, r=0),
                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                             font=dict(color='white', size=9))
-            fig.update_xaxes(gridcolor='#333', tickfont=dict(size=8))
-            fig.update_yaxes(gridcolor='#333')
+                             font=dict(color='white', size=8))
+            fig.update_xaxes(gridcolor='#333', tickfont=dict(size=7))
+            fig.update_yaxes(gridcolor='#333', showticklabels=False)
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("---")
             
-            st.markdown('<p class="section-title">👤 Por Pessoa</p>', unsafe_allow_html=True)
+            # Por pessoa
+            st.markdown('<p class="section-title">👤 Por pessoa</p>', unsafe_allow_html=True)
             evolucao_pessoa = df_desp.groupby(["mes", "buyer"])["total_value"].sum().reset_index()
             
             fig2 = px.line(evolucao_pessoa, x="mes", y="total_value", color="buyer",
                           markers=True, color_discrete_map={"Susanna": "#e91e63", "Pietrah": "#03a9f4"})
-            fig2.update_layout(height=160, margin=dict(t=5, b=5, l=5, r=5),
+            fig2.update_layout(height=120, margin=dict(t=0, b=0, l=0, r=0),
                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                              font=dict(color='white', size=9), legend=dict(orientation="h", y=1.15), showlegend=True)
-            fig2.update_xaxes(gridcolor='#333', tickfont=dict(size=8))
-            fig2.update_yaxes(gridcolor='#333')
+                              font=dict(color='white', size=8), legend=dict(orientation="h", y=1.15, font=dict(size=7)), showlegend=True)
+            fig2.update_xaxes(gridcolor='#333', tickfont=dict(size=7))
+            fig2.update_yaxes(gridcolor='#333', showticklabels=False)
             st.plotly_chart(fig2, use_container_width=True)
             
             st.markdown("---")
             
-            st.markdown('<p class="section-title">🏷️ Top 5 Categorias</p>', unsafe_allow_html=True)
+            # Top 5 categorias
+            st.markdown('<p class="section-title">🏷️ Top 5 categorias</p>', unsafe_allow_html=True)
             top_cats = df_desp.groupby("label")["total_value"].sum().nlargest(5).index.tolist()
             df_top = df_desp[df_desp["label"].isin(top_cats)]
             evolucao_cat = df_top.groupby(["mes", "label"])["total_value"].sum().reset_index()
             
             fig3 = px.area(evolucao_cat, x="mes", y="total_value", color="label")
-            fig3.update_layout(height=160, margin=dict(t=5, b=5, l=5, r=5),
+            fig3.update_layout(height=120, margin=dict(t=0, b=0, l=0, r=0),
                               paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                              font=dict(color='white', size=9), legend=dict(orientation="h", y=1.2, font=dict(size=8)), showlegend=True)
-            fig3.update_xaxes(gridcolor='#333', tickfont=dict(size=8))
-            fig3.update_yaxes(gridcolor='#333')
+                              font=dict(color='white', size=8), legend=dict(orientation="h", y=1.2, font=dict(size=6)), showlegend=True)
+            fig3.update_xaxes(gridcolor='#333', tickfont=dict(size=7))
+            fig3.update_yaxes(gridcolor='#333', showticklabels=False)
             st.plotly_chart(fig3, use_container_width=True)
         else:
             st.info("📝 Nenhum gasto registrado.")
