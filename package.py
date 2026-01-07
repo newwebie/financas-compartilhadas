@@ -359,8 +359,24 @@ def carregar_contas_fixas(_colls):
 
 @st.cache_data(ttl=300)
 def carregar_emprestimos_terceiros(_colls, user):
-    """Carrega emprestimos a terceiros do usuario."""
+    """Carrega emprestimos a terceiros do usuario (todos em aberto)."""
     return list(_colls["emprestimos_terceiros"].find({"credor": user, "status": "em aberto"}))
+
+
+@st.cache_data(ttl=300)
+def carregar_emprestimos_terceiros_periodo(_colls, user, data_inicio, data_fim):
+    """Carrega emprestimos a terceiros do usuario filtrados por periodo."""
+    from datetime import datetime
+    # Converte date para datetime se necessario
+    if hasattr(data_inicio, 'year') and not hasattr(data_inicio, 'hour'):
+        data_inicio = datetime(data_inicio.year, data_inicio.month, data_inicio.day)
+    if hasattr(data_fim, 'year') and not hasattr(data_fim, 'hour'):
+        data_fim = datetime(data_fim.year, data_fim.month, data_fim.day, 23, 59, 59)
+    return list(_colls["emprestimos_terceiros"].find({
+        "credor": user,
+        "status": "em aberto",
+        "data_emprestimo": {"$gte": data_inicio, "$lte": data_fim}
+    }))
 
 
 @st.cache_data(ttl=300)
@@ -604,8 +620,8 @@ def main():
                             contas_fixas_credito_inicio += conta["valor"] / 2
             gastos_reais += contas_fixas_credito_inicio
 
-            # Soma emprestimos a terceiros (dinheiro que saiu do bolso)
-            df_emprestimos_terceiros_inicio = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+            # Soma emprestimos a terceiros (dinheiro que saiu do bolso) - apenas do periodo atual
+            df_emprestimos_terceiros_inicio = pd.DataFrame(carregar_emprestimos_terceiros_periodo(colls, user, data_inicio, data_fim))
             if not df_emprestimos_terceiros_inicio.empty:
                 gastos_reais += df_emprestimos_terceiros_inicio["valor"].sum()
 
@@ -668,8 +684,8 @@ def main():
                             else:
                                 user_cat_series[cat_label] = valor_meu
 
-            # Adiciona emprestimos a terceiros (em aberto) como categoria
-            df_emprestimos_terceiros = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+            # Adiciona emprestimos a terceiros (do periodo atual) como categoria
+            df_emprestimos_terceiros = pd.DataFrame(carregar_emprestimos_terceiros_periodo(colls, user, data_inicio, data_fim))
             if not df_emprestimos_terceiros.empty:
                 total_emprestei = df_emprestimos_terceiros["valor"].sum()
                 if total_emprestei > 0:
@@ -1587,8 +1603,8 @@ def main():
             # Totais
             total_var = df_user_gastos["total_value"].sum() if not df_user_gastos.empty else 0
 
-            # Soma emprestimos a terceiros
-            df_emprestimos_terceiros_rel = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+            # Soma emprestimos a terceiros (do periodo atual)
+            df_emprestimos_terceiros_rel = pd.DataFrame(carregar_emprestimos_terceiros_periodo(colls, user, data_inicio, data_fim))
             total_emprestei = df_emprestimos_terceiros_rel["valor"].sum() if not df_emprestimos_terceiros_rel.empty else 0
 
             total_geral = total_var + user_fixas + total_emprestei
