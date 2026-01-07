@@ -1683,55 +1683,35 @@ def main():
                                 <span style="font-size: 11px; color: #aaa; float: right;">{fmt(p["valor_parcela"])} ({p["parcela_atual"]}/{p["parcelas_total"]})</span>
                             </div>''', unsafe_allow_html=True)
 
-            # ========== POR CATEGORIA ==========
+            # ========== COMPRAS QUENTES ==========
             st.markdown("---")
-            st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">🏷️ Por Categoria</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">🔥 Compras Quentes</p>', unsafe_allow_html=True)
 
-            # Adiciona contas fixas de credito ao grafico
-            cat_data = df_user_gastos.groupby("label")["total_value"].sum() if not df_user_gastos.empty else pd.Series(dtype=float)
+            if not df_user_gastos.empty:
+                # Top 3 maiores gastos do mes
+                top_compras = df_user_gastos.nlargest(3, "total_value")
 
-            # Soma contas fixas de credito por categoria
-            if not df_contas_fixas.empty:
-                for _, conta in df_contas_fixas.iterrows():
-                    if conta.get("cartao_credito", False):
-                        valor_meu = conta["valor"] if conta["responsavel"] == user else (conta["valor"] / 2 if conta["responsavel"] == "Dividido" else 0)
-                        if valor_meu > 0:
-                            cat_original = conta.get("categoria", "📄 Contas")
-                            # Mapeia categoria da conta fixa para categoria de despesa
-                            if "Saude" in str(cat_original) or "saude" in str(cat_original).lower():
-                                cat_label = "💊 Saude"
-                            elif cat_original in ["📄 Contas", "💊 Saude", "📦 Outros"]:
-                                cat_label = cat_original
-                            else:
-                                cat_label = "📄 Contas"
+                medalhas = ["🥇", "🥈", "🥉"]
+                for i, (_, compra) in enumerate(top_compras.iterrows()):
+                    item = compra.get("item", "-")
+                    categoria = compra.get("label", "-")
+                    valor = compra["total_value"]
+                    data_compra = compra["createdAt"].strftime("%d/%m")
 
-                            if cat_label in cat_data.index:
-                                cat_data[cat_label] += valor_meu
-                            else:
-                                cat_data[cat_label] = valor_meu
-
-            cat_data = cat_data.sort_values(ascending=False)
-            total_com_fixas = cat_data.sum() if not cat_data.empty else 0
-
-            if not cat_data.empty:
-                max_cat = cat_data.max()
-
-                cores_distintas = ['#e91e63', '#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#ffeb3b', '#f44336']
-                for i, (cat, val) in enumerate(cat_data.items()):
-                    pct = (val / max_cat) * 100
-                    pct_total = (val / total_com_fixas * 100) if total_com_fixas > 0 else 0
-                    cor = cores_distintas[i % len(cores_distintas)]
                     st.markdown(f'''
-                    <div style="margin-bottom: 6px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-bottom: 2px;">
-                            <span>{cat}</span>
-                            <span>{fmt(val)} ({pct_total:.0f}%)</span>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
-                            <div style="background: {cor}; width: {pct}%; height: 100%; border-radius: 4px;"></div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #f44336;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 14px;">{medalhas[i]}</span>
+                                <span style="font-size: 12px; color: white; font-weight: 500;"> {item}</span><br>
+                                <span style="font-size: 10px; color: #888;">{categoria} | {data_compra}</span>
+                            </div>
+                            <div style="font-size: 14px; font-weight: 600; color: #f44336;">{fmt(valor)}</div>
                         </div>
                     </div>
                     ''', unsafe_allow_html=True)
+            else:
+                st.caption("Sem compras no periodo")
 
             st.markdown("---")
 
@@ -1893,18 +1873,194 @@ def main():
         st.markdown('<p class="page-title">📈 Minha Evolucao</p>', unsafe_allow_html=True)
 
         df_desp = pd.DataFrame(carregar_despesas(colls))
+        df_contas_fixas = pd.DataFrame(carregar_contas_fixas(colls))
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
             df_desp["mes"] = df_desp["createdAt"].dt.to_period("M").astype(str)
 
-            # Filtrar apenas meus gastos
+            # Filtrar apenas meus gastos (sem cofrinho e renda variavel)
             df_user = df_desp[df_desp["buyer"] == user]
+            df_user_gastos = df_user[~df_user["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
+            if "origem" in df_user_gastos.columns:
+                df_user_gastos = df_user_gastos[df_user_gastos["origem"].fillna("") != "conta_fixa"]
 
             if not df_user.empty:
-                # Meu total por mes
-                st.markdown('<p class="section-title">💰 Meu total por mes</p>', unsafe_allow_html=True)
-                evolucao = df_user.groupby("mes")["total_value"].sum().reset_index()
+                # ========== COMPARATIVO COM MES ANTERIOR ==========
+                st.markdown('<p class="section-title">📈 vs Mes Anterior</p>', unsafe_allow_html=True)
+
+                # Periodo atual
+                data_inicio, data_fim = get_periodo_fatura(colls, user)
+
+                # Calcula periodo do mes anterior
+                if data_inicio.month == 1:
+                    mes_ant_inicio = date(data_inicio.year - 1, 12, data_inicio.day)
+                    mes_ant_fim = date(data_fim.year - 1, 12, data_fim.day)
+                else:
+                    try:
+                        mes_ant_inicio = date(data_inicio.year, data_inicio.month - 1, data_inicio.day)
+                    except:
+                        mes_ant_inicio = date(data_inicio.year, data_inicio.month - 1, 28)
+                    try:
+                        mes_ant_fim = date(data_fim.year, data_fim.month - 1, data_fim.day)
+                    except:
+                        mes_ant_fim = date(data_fim.year, data_fim.month - 1, 28)
+
+                # Gastos do mes atual
+                df_mes_atual = df_user_gastos[
+                    (df_user_gastos["createdAt"].dt.date >= data_inicio) &
+                    (df_user_gastos["createdAt"].dt.date <= data_fim)
+                ]
+                total_mes_atual = df_mes_atual["total_value"].sum() if not df_mes_atual.empty else 0
+
+                # Gastos do mes anterior
+                df_mes_anterior = df_user_gastos[
+                    (df_user_gastos["createdAt"].dt.date >= mes_ant_inicio) &
+                    (df_user_gastos["createdAt"].dt.date <= mes_ant_fim)
+                ]
+                total_mes_anterior = df_mes_anterior["total_value"].sum() if not df_mes_anterior.empty else 0
+
+                # Calcula diferenca total
+                diferenca = total_mes_atual - total_mes_anterior
+                if total_mes_anterior > 0:
+                    pct_diferenca = ((total_mes_atual - total_mes_anterior) / total_mes_anterior) * 100
+                else:
+                    pct_diferenca = 100 if total_mes_atual > 0 else 0
+
+                # Define cor e emoji
+                if diferenca > 0:
+                    cor_comp = "#f44336"
+                    emoji_comp = "📈"
+                    texto_comp = f"+{fmt(abs(diferenca))} ({pct_diferenca:+.0f}%)"
+                elif diferenca < 0:
+                    cor_comp = "#4caf50"
+                    emoji_comp = "📉"
+                    texto_comp = f"-{fmt(abs(diferenca))} ({pct_diferenca:.0f}%)"
+                else:
+                    cor_comp = "#888"
+                    emoji_comp = "➡️"
+                    texto_comp = "Igual"
+
+                # Card resumo
+                st.markdown(f'''
+                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; text-align: center; margin-bottom: 8px;">
+                    <span style="font-size: 11px; color: #888;">Total</span><br>
+                    <span style="font-size: 12px; color: #aaa;">{fmt(total_mes_anterior)}</span>
+                    <span style="font-size: 14px; color: white;"> → </span>
+                    <span style="font-size: 12px; color: #aaa;">{fmt(total_mes_atual)}</span>
+                    <span style="font-size: 14px; color: {cor_comp}; font-weight: 600; margin-left: 8px;">{emoji_comp} {texto_comp}</span>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # Comparativo por categoria
+                cat_atual = df_mes_atual.groupby("label")["total_value"].sum() if not df_mes_atual.empty else pd.Series(dtype=float)
+                cat_anterior = df_mes_anterior.groupby("label")["total_value"].sum() if not df_mes_anterior.empty else pd.Series(dtype=float)
+
+                todas_cats = set(cat_atual.index.tolist() + cat_anterior.index.tolist())
+
+                comparativos = []
+                for cat in todas_cats:
+                    val_atual = cat_atual.get(cat, 0)
+                    val_anterior = cat_anterior.get(cat, 0)
+                    diff = val_atual - val_anterior
+                    if val_anterior > 0:
+                        pct = ((val_atual - val_anterior) / val_anterior) * 100
+                    else:
+                        pct = 100 if val_atual > 0 else 0
+                    comparativos.append({"cat": cat, "atual": val_atual, "anterior": val_anterior, "diff": diff, "pct": pct})
+
+                comparativos = sorted(comparativos, key=lambda x: abs(x["diff"]), reverse=True)
+
+                for comp in comparativos[:5]:
+                    if comp["diff"] > 0:
+                        cor_cat = "#f44336"
+                        seta = "↑"
+                    elif comp["diff"] < 0:
+                        cor_cat = "#4caf50"
+                        seta = "↓"
+                    else:
+                        cor_cat = "#888"
+                        seta = "→"
+
+                    st.markdown(f'''
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 13px; color: #ccc;">{comp["cat"]}</span>
+                        <span style="font-size: 12px;">
+                            <span style="color: #888;">{fmt(comp["anterior"])}</span>
+                            <span style="color: {cor_cat};"> {seta} </span>
+                            <span style="color: white;">{fmt(comp["atual"])}</span>
+                            <span style="color: {cor_cat}; font-weight: 600; margin-left: 4px;">({comp["pct"]:+.0f}%)</span>
+                        </span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # ========== ESTATISTICAS GERAIS ==========
+                st.markdown('<p class="section-title">📊 Estatisticas Gerais</p>', unsafe_allow_html=True)
+
+                # Calcula estatisticas
+                total_gasto_historico = df_user_gastos["total_value"].sum()
+                num_compras_total = len(df_user_gastos)
+                media_por_compra = total_gasto_historico / num_compras_total if num_compras_total > 0 else 0
+
+                # Media mensal
+                meses_distintos = df_user_gastos["mes"].nunique()
+                media_mensal = total_gasto_historico / meses_distintos if meses_distintos > 0 else 0
+
+                # Maior gasto de todos os tempos
+                maior_gasto = df_user_gastos.loc[df_user_gastos["total_value"].idxmax()] if not df_user_gastos.empty else None
+
+                # Categoria mais gastadora
+                cat_mais_gasta = df_user_gastos.groupby("label")["total_value"].sum().idxmax() if not df_user_gastos.empty else "-"
+                valor_cat_mais = df_user_gastos.groupby("label")["total_value"].sum().max() if not df_user_gastos.empty else 0
+
+                st.markdown(f'''
+                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%; margin-bottom: 8px;">
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #888;">Total historico</span><br>
+                        <span style="font-size: 13px; color: white; font-weight: 600;">{fmt(total_gasto_historico)}</span>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #888;">Media mensal</span><br>
+                        <span style="font-size: 13px; color: white; font-weight: 600;">{fmt(media_mensal)}</span>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%; margin-bottom: 8px;">
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #888;">Qtd compras</span><br>
+                        <span style="font-size: 13px; color: white; font-weight: 600;">{num_compras_total}</span>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #888;">Media/compra</span><br>
+                        <span style="font-size: 13px; color: white; font-weight: 600;">{fmt(media_por_compra)}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # Maior gasto e categoria campeã
+                if maior_gasto is not None:
+                    st.markdown(f'''
+                    <div style="background: rgba(244, 67, 54, 0.1); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #f44336;">
+                        <span style="font-size: 11px; color: #f44336;">🔥 Maior gasto de todos os tempos</span><br>
+                        <span style="font-size: 13px; color: white; font-weight: 500;">{maior_gasto.get("item", "-")}</span>
+                        <span style="font-size: 13px; color: #f44336; font-weight: 600; float: right;">{fmt(maior_gasto["total_value"])}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                st.markdown(f'''
+                <div style="background: rgba(156, 39, 176, 0.1); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #9c27b0;">
+                    <span style="font-size: 11px; color: #9c27b0;">🏆 Categoria campea</span><br>
+                    <span style="font-size: 13px; color: white; font-weight: 500;">{cat_mais_gasta}</span>
+                    <span style="font-size: 13px; color: #9c27b0; font-weight: 600; float: right;">{fmt(valor_cat_mais)}</span>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # ========== GRAFICO EVOLUCAO MENSAL ==========
+                st.markdown('<p class="section-title">💰 Evolucao Mensal</p>', unsafe_allow_html=True)
+                evolucao = df_user_gastos.groupby("mes")["total_value"].sum().reset_index()
 
                 cor_linha = '#e91e63' if user == "Susanna" else '#03a9f4'
 
@@ -1922,10 +2078,26 @@ def main():
 
                 st.markdown("---")
 
-                # Top 5 categorias
-                st.markdown('<p class="section-title">🏷️ Minhas top 5 categorias</p>', unsafe_allow_html=True)
-                top_cats = df_user.groupby("label")["total_value"].sum().nlargest(5).index.tolist()
-                df_top = df_user[df_user["label"].isin(top_cats)]
+                # ========== RANKING DE MESES ==========
+                st.markdown('<p class="section-title">🏅 Ranking de Meses</p>', unsafe_allow_html=True)
+
+                meses_ranking = df_user_gastos.groupby("mes")["total_value"].sum().sort_values(ascending=False).head(5)
+
+                medalhas_mes = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+                for i, (mes, valor) in enumerate(meses_ranking.items()):
+                    st.markdown(f'''
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 13px; color: #ccc;">{medalhas_mes[i]} {mes}</span>
+                        <span style="font-size: 13px; color: white; font-weight: 600;">{fmt(valor)}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # Top 5 categorias historico
+                st.markdown('<p class="section-title">🏷️ Top 5 Categorias (historico)</p>', unsafe_allow_html=True)
+                top_cats = df_user_gastos.groupby("label")["total_value"].sum().nlargest(5).index.tolist()
+                df_top = df_user_gastos[df_user_gastos["label"].isin(top_cats)]
                 evolucao_cat = df_top.groupby(["mes", "label"])["total_value"].sum().reset_index()
 
                 fig3 = px.area(evolucao_cat, x="mes", y="total_value", color="label")
