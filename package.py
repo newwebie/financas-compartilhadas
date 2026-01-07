@@ -99,6 +99,119 @@ def enviar_email_abastecimento(quem_abasteceu, veiculo, valor):
         print(f"Erro ao enviar email: {e}")
         return False
 
+
+def enviar_lembrete_emprestimo(credor, devedor, valor, descricao, data_devolucao):
+    """Envia email lembrando de verificar se o emprestimo foi quitado"""
+    try:
+        smtp_section = st.secrets.get("smtp", {})
+        smtp_config = {
+            "host": smtp_section.get("smtp_host", "smtp.gmail.com"),
+            "port": smtp_section.get("smtp_port", 587),
+            "user": smtp_section.get("smtp_user", ""),
+            "password": smtp_section.get("smtp_password", ""),
+            "from_email": smtp_section.get("smtp_from_email", ""),
+            "from_name": smtp_section.get("smtp_from_name", "Financas")
+        }
+
+        emails_usuarios = {
+            "Susanna": smtp_section.get("email_susanna", "susannazk004@gmail.com"),
+            "Pietrah": smtp_section.get("email_pietrah", "pietrahofc@gmail.com")
+        }
+
+        destinatario = emails_usuarios.get(credor)
+        if not destinatario or not smtp_config["user"] or not smtp_config["password"]:
+            return False
+
+        valor_fmt = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        data_fmt = data_devolucao.strftime("%d/%m/%Y") if data_devolucao else "Não definida"
+
+        msg = MIMEMultipart()
+        msg["From"] = f"{smtp_config['from_name']} <{smtp_config['from_email']}>"
+        msg["To"] = destinatario
+        msg["Subject"] = f"🔔 Lembrete: Verificar empréstimo para {devedor}"
+
+        corpo = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #1a1a2e; color: white; padding: 20px;">
+            <div style="max-width: 400px; margin: 0 auto; background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); border-radius: 12px; padding: 20px; border: 1px solid #333;">
+                <h2 style="color: #ff9800; margin-bottom: 15px; text-align: center;">🔔 Lembrete de Empréstimo</h2>
+
+                <p style="font-size: 16px; color: #ccc; text-align: center;">Oi <strong style="color: #e91e63;">{credor}</strong>! 👋</p>
+
+                <p style="font-size: 15px; color: white; text-align: center; margin: 15px 0;">
+                    O prazo de devolução do empréstimo para <strong style="color: #03a9f4;">{devedor}</strong> venceu ontem!
+                </p>
+
+                <div style="background: rgba(156, 39, 176, 0.15); padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #9c27b0;">
+                    <p style="font-size: 12px; color: #ce93d8; margin: 0 0 5px 0;">📝 {descricao or 'Empréstimo'}</p>
+                    <p style="font-size: 24px; color: #ce93d8; font-weight: bold; margin: 5px 0; text-align: center;">{valor_fmt}</p>
+                    <p style="font-size: 11px; color: #888; margin: 5px 0 0 0; text-align: center;">Prazo: {data_fmt}</p>
+                </div>
+
+                <div style="background: rgba(255, 152, 0, 0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                    <p style="font-size: 14px; color: #ff9800; margin: 0;">
+                        🤔 Já recebeu? Marque como quitado no app!
+                    </p>
+                </div>
+
+                <p style="font-size: 11px; color: #666; text-align: center; margin-top: 20px;">
+                    Enviado automaticamente pelo app Financas
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(corpo, "html"))
+
+        with smtplib.SMTP(smtp_config["host"], smtp_config["port"]) as server:
+            server.starttls()
+            server.login(smtp_config["user"], smtp_config["password"])
+            server.sendmail(smtp_config["from_email"], destinatario, msg.as_string())
+
+        return True
+    except Exception as e:
+        print(f"Erro ao enviar lembrete: {e}")
+        return False
+
+
+def verificar_lembretes_emprestimos(colls):
+    """Verifica emprestimos com data_devolucao vencida e envia lembretes"""
+    from datetime import datetime, timedelta
+
+    hoje = datetime.now().date()
+    ontem = hoje - timedelta(days=1)
+
+    # Busca emprestimos em aberto com data_devolucao = ontem (1 dia apos vencimento)
+    emprestimos = list(colls["emprestimos_terceiros"].find({"status": "em aberto"}))
+
+    for emp in emprestimos:
+        data_dev = emp.get("data_devolucao")
+        if not data_dev:
+            continue
+
+        # Converte para date se for datetime
+        if hasattr(data_dev, 'date'):
+            data_dev = data_dev.date()
+
+        # Verifica se venceu ontem e ainda nao enviou lembrete
+        if data_dev == ontem and not emp.get("lembrete_enviado"):
+            sucesso = enviar_lembrete_emprestimo(
+                credor=emp.get("credor"),
+                devedor=emp.get("devedor"),
+                valor=emp.get("valor", 0),
+                descricao=emp.get("descricao", ""),
+                data_devolucao=data_dev
+            )
+
+            if sucesso:
+                # Marca que lembrete foi enviado
+                colls["emprestimos_terceiros"].update_one(
+                    {"_id": emp["_id"]},
+                    {"$set": {"lembrete_enviado": True}}
+                )
+
+
 # Configuracao da pagina
 st.set_page_config(
     page_title="Financas",
@@ -555,6 +668,12 @@ def main():
         st.stop()
 
     colls = get_collections(client)
+
+    # Verifica lembretes de emprestimos pendentes (1 dia apos vencimento)
+    if "lembretes_verificados" not in st.session_state:
+        verificar_lembretes_emprestimos(colls)
+        st.session_state.lembretes_verificados = True
+
     user = get_user()
     outro = get_outro_user()
     cor_card = "su-card" if user == "Susanna" else "pi-card"
