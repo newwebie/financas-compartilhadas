@@ -6,6 +6,98 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import certifi
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def enviar_email_abastecimento(quem_abasteceu, veiculo, valor):
+    """Envia email notificando o outro usuario sobre abastecimento"""
+    try:
+        # Puxa configuracoes do secrets.toml (secao [smtp])
+        smtp_section = st.secrets.get("smtp", {})
+        smtp_config = {
+            "host": smtp_section.get("smtp_host", "smtp.gmail.com"),
+            "port": smtp_section.get("smtp_port", 587),
+            "user": smtp_section.get("smtp_user", ""),
+            "password": smtp_section.get("smtp_password", ""),
+            "from_email": smtp_section.get("smtp_from_email", ""),
+            "from_name": smtp_section.get("smtp_from_name", "Financas")
+        }
+
+        emails_usuarios = {
+            "Susanna": smtp_section.get("email_susanna", "susannazk004@gmail.com"),
+            "Pietrah": smtp_section.get("email_pietrah", "pietrahofc@gmail.com")
+        }
+
+        # Define destinatario (o outro usuario)
+        if quem_abasteceu == "Susanna":
+            destinatario = emails_usuarios["Pietrah"]
+            nome_dest = "Pietrah"
+        else:
+            destinatario = emails_usuarios["Susanna"]
+            nome_dest = "Susanna"
+
+        # Verifica se tem configuracao
+        if not smtp_config["user"] or not smtp_config["password"] or not destinatario:
+            print("Configuracao de email incompleta no secrets.toml")
+            return False
+
+        # Formata valor
+        valor_fmt = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        # Artigo correto para o veiculo
+        artigo = "a" if veiculo == "Moto" else "o"
+        emoji_veiculo = "🏍️" if veiculo == "Moto" else "🚗"
+
+        # Cria mensagem
+        msg = MIMEMultipart()
+        msg["From"] = f"{smtp_config['from_name']} <{smtp_config['from_email']}>"
+        msg["To"] = destinatario
+        msg["Subject"] = f"{quem_abasteceu} abasteceu {artigo} {veiculo}!"
+
+        corpo = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #1a1a2e; color: white; padding: 20px;">
+            <div style="max-width: 400px; margin: 0 auto; background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); border-radius: 12px; padding: 20px; border: 1px solid #333;">
+                <h2 style="color: #ff9800; margin-bottom: 15px; text-align: center;">{emoji_veiculo} Abastecimento!</h2>
+
+                <p style="font-size: 16px; color: #ccc; text-align: center;">Oi <strong style="color: #e91e63;">{nome_dest}</strong>! 👋</p>
+
+                <p style="font-size: 15px; color: white; text-align: center; margin: 15px 0;">
+                    <strong>{quem_abasteceu}</strong> acabou de abastecer {artigo} <strong>{veiculo}</strong>!
+                </p>
+
+                <div style="background: rgba(76, 175, 80, 0.15); padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px solid #4caf50;">
+                    <span style="font-size: 12px; color: #888;">💵 Valor</span><br>
+                    <span style="font-size: 28px; color: #4caf50; font-weight: bold;">{valor_fmt}</span>
+                </div>
+
+                <div style="background: rgba(233, 30, 99, 0.1); padding: 12px; border-radius: 8px; text-align: center; margin-top: 15px;">
+                    <p style="font-size: 14px; color: #e91e63; margin: 0;">
+                        😜 Agora é sua vez de abastecer, hein!
+                    </p>
+                </div>
+
+                <p style="font-size: 11px; color: #666; text-align: center; margin-top: 20px;">
+                    Enviado automaticamente pelo app Financas
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(corpo, "html"))
+
+        # Envia email
+        with smtplib.SMTP(smtp_config["host"], smtp_config["port"]) as server:
+            server.starttls()
+            server.login(smtp_config["user"], smtp_config["password"])
+            server.sendmail(smtp_config["from_email"], destinatario, msg.as_string())
+
+        return True
+    except Exception as e:
+        print(f"Erro ao enviar email: {e}")
+        return False
 
 # Configuracao da pagina
 st.set_page_config(
@@ -735,7 +827,11 @@ def main():
                     "status_pendencia": None
                 })
                 limpar_cache_dados()
-                st.success(f"✅ Abastecimento moto {fmt(valor_moto)} registrado!")
+                # Envia email para o outro usuario
+                if enviar_email_abastecimento(user, "Moto", valor_moto):
+                    st.success(f"✅ Abastecimento moto {fmt(valor_moto)} registrado! 📧 Email enviado!")
+                else:
+                    st.success(f"✅ Abastecimento moto {fmt(valor_moto)} registrado!")
                 st.balloons()
 
         with st.expander("🚗 Carro", expanded=False):
@@ -762,7 +858,11 @@ def main():
                     "status_pendencia": None
                 })
                 limpar_cache_dados()
-                st.success(f"✅ Abastecimento carro {fmt(valor_carro)} registrado!")
+                # Envia email para o outro usuario
+                if enviar_email_abastecimento(user, "Carro", valor_carro):
+                    st.success(f"✅ Abastecimento carro {fmt(valor_carro)} registrado! 📧 Email enviado!")
+                else:
+                    st.success(f"✅ Abastecimento carro {fmt(valor_carro)} registrado!")
                 st.balloons()
 
         st.markdown("---")
