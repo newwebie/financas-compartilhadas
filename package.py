@@ -647,21 +647,19 @@ def main():
                 st.balloons()
                 st.rerun()
 
-        st.markdown("---")
+        st.markdown("")
 
-        # Detalhamento (para referencia)
-        st.markdown('<p class="section-title">📋 Detalhamento</p>', unsafe_allow_html=True)
 
         # Mostra resumo
         st.markdown(f'''
         <div style="display: flex; gap: 8px; margin-bottom: 10px;">
             <div style="flex: 1; background: rgba(233,30,99,0.2); padding: 6px; border-radius: 6px; text-align: center;">
-                <span style="font-size: 8px; color: #f48fb1;">Voce deve</span><br>
-                <span style="font-size: 11px; color: white; font-weight: 600;">{fmt(user_deve_bruto)}</span>
+                <span style="font-size: 11px; color: #f48fb1;">Voce deve</span><br>
+                <span style="font-size: 14px; color: white; font-weight: 600;">{fmt(user_deve_bruto)}</span>
             </div>
             <div style="flex: 1; background: rgba(3,169,244,0.2); padding: 6px; border-radius: 6px; text-align: center;">
-                <span style="font-size: 8px; color: #4fc3f7;">{outro} deve</span><br>
-                <span style="font-size: 11px; color: white; font-weight: 600;">{fmt(outro_deve_bruto)}</span>
+                <span style="font-size: 11px; color: #4fc3f7;">{outro} deve</span><br>
+                <span style="font-size: 14px; color: white; font-weight: 600;">{fmt(outro_deve_bruto)}</span>
             </div>
         </div>
         ''', unsafe_allow_html=True)
@@ -715,9 +713,9 @@ def main():
             with st.expander(f"📝 Itens pendentes ({len(todas_pendencias)})", expanded=False):
                 for pend in todas_pendencias:
                     cor_tag = "#e91e63" if pend["quem"] == "Voce" else "#03a9f4"
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {cor_tag};">
-                        <span style="font-size: 9px; color: white;">{pend["descricao"]}</span>
-                        <span style="font-size: 8px; color: #aaa; float: right;">{fmt(pend["valor"])} | {pend["data"]}</span>
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {cor_tag};">
+                        <span style="font-size: 12px; color: white;">{pend["descricao"]}</span>
+                        <span style="font-size: 11px; color: #aaa; float: right;">{fmt(pend["valor"])} | {pend["data"]}</span>
                     </div>''', unsafe_allow_html=True)
         else:
             st.caption("Nenhum item pendente")
@@ -742,7 +740,7 @@ def main():
         if not df_terceiros.empty:
             # Calcula total
             total_terceiros = df_terceiros["valor"].sum()
-            st.markdown(f'<div style="background: rgba(156,39,176,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 8px; color: #ce93d8;">Total a receber</span><br><span style="font-size: 12px; color: white; font-weight: 600;">{fmt(total_terceiros)}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background: rgba(156,39,176,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 10px; color: #ce93d8;">Total a receber</span><br><span style="font-size: 14px; color: white; font-weight: 600;">{fmt(total_terceiros)}</span></div>', unsafe_allow_html=True)
 
             for i, (_, emp) in enumerate(df_terceiros.iterrows()):
                 # Formata datas
@@ -752,10 +750,10 @@ def main():
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #9c27b0;">
-                        <span style="font-size: 10px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</span><br>
-                        <span style="font-size: 8px; color: #aaa;">{emp.get("descricao", "-")}</span><br>
-                        <span style="font-size: 9px; color: white;">{fmt(emp["valor"])}</span>
-                        <span style="font-size: 8px; color: #888;"> | Emp: {data_emp} | Dev: {data_dev}</span>
+                        <span style="font-size: 12px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</span><br>
+                        <span style="font-size: 11px; color: #aaa;">{emp.get("descricao", "-")}</span><br>
+                        <span style="font-size: 12px; color: white;">{fmt(emp["valor"])}</span>
+                        <span style="font-size: 10px; color: #888;"> | Emp: {data_emp} | Dev: {data_dev}</span>
                     </div>''', unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"quitar_terceiro_{i}", help="Recebido"):
@@ -775,7 +773,7 @@ def main():
 
         if not df_dividas.empty:
             total_dividas = df_dividas["valor"].sum()
-            st.markdown(f'<div style="background: rgba(244,67,54,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 8px; color: #ef9a9a;">Total que devo</span><br><span style="font-size: 12px; color: white; font-weight: 600;">{fmt(total_dividas)}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background: rgba(244,67,54,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 10px; color: #ef9a9a;">Total que devo</span><br><span style="font-size: 14px; color: white; font-weight: 600;">{fmt(total_dividas)}</span></div>', unsafe_allow_html=True)
 
             for i, (_, div) in enumerate(df_dividas.iterrows()):
                 data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
@@ -784,10 +782,10 @@ def main():
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336;">
-                        <span style="font-size: 10px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</span><br>
-                        <span style="font-size: 8px; color: #aaa;">{div.get("descricao", "-")}</span><br>
-                        <span style="font-size: 9px; color: white;">{fmt(div["valor"])}</span>
-                        <span style="font-size: 8px; color: #888;"> | Emp: {data_emp} | Pag: {data_pag}</span>
+                        <span style="font-size: 12px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</span><br>
+                        <span style="font-size: 11px; color: #aaa;">{div.get("descricao", "-")}</span><br>
+                        <span style="font-size: 12px; color: white;">{fmt(div["valor"])}</span>
+                        <span style="font-size: 10px; color: #888;"> | Emp: {data_emp} | Pag: {data_pag}</span>
                     </div>''', unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"quitar_divida_{i}", help="Paguei"):
@@ -847,156 +845,139 @@ def main():
 
     # ========== AMBAS (visao compartilhada) ==========
     elif menu == "👯 Ambas":
-        st.markdown('<p class="page-title">👯 Visao Geral</p>', unsafe_allow_html=True)
+        st.markdown('<p class="page-title">👯 Gastos Conjuntos</p>', unsafe_allow_html=True)
 
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
             hoje = date.today()
-            mes_atual = df_desp[(df_desp["createdAt"].dt.month == hoje.month) & (df_desp["createdAt"].dt.year == hoje.year)]
 
-            # Calcula totais
-            total_su = mes_atual[mes_atual["buyer"] == "Susanna"]["total_value"].sum()
-            total_pi = mes_atual[mes_atual["buyer"] == "Pietrah"]["total_value"].sum()
-            total_ambas = total_su + total_pi
+            # Calcula o 5o dia util do mes atual
+            def get_5o_dia_util(ano, mes):
+                from calendar import monthrange
+                dias_uteis = 0
+                for dia in range(1, monthrange(ano, mes)[1] + 1):
+                    d = date(ano, mes, dia)
+                    if d.weekday() < 5:  # Segunda a Sexta
+                        dias_uteis += 1
+                        if dias_uteis == 5:
+                            return d
+                return date(ano, mes, 1)
 
-            # === CARDS DE GASTOS DO MES ===
-            st.markdown(f'''
-            <div style="display: flex; flex-direction: row; gap: 8px; width: 100%; margin-bottom: 12px;">
-                <div style="flex: 1; background: linear-gradient(135deg, #c2185b 0%, #e91e63 100%); padding: 8px 10px; border-radius: 8px; color: white; border-left: 3px solid #f48fb1;">
-                    <h4 style="margin: 0; font-size: 12px; opacity: 0.9;">⚡ Susanna</h4>
-                    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">{fmt(total_su)}</h2>
-                </div>
-                <div style="flex: 1; background: linear-gradient(135deg, #0277bd 0%, #03a9f4 100%); padding: 8px 10px; border-radius: 8px; color: white; border-left: 3px solid #4fc3f7;">
-                    <h4 style="margin: 0; font-size: 12px; opacity: 0.9;">👩 Pietrah</h4>
-                    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">{fmt(total_pi)}</h2>
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
+            # Determina periodo de corte (5o dia util)
+            quinto_dia_util_atual = get_5o_dia_util(hoje.year, hoje.month)
 
-            # Barra comparativa visual
-            if total_ambas > 0:
-                pct_su = (total_su / total_ambas) * 100
-                pct_pi = (total_pi / total_ambas) * 100
-                st.markdown(f'''
-                <div style="background: rgba(255,255,255,0.1); border-radius: 6px; height: 12px; overflow: hidden; margin-bottom: 8px;">
-                    <div style="display: flex; height: 100%;">
-                        <div style="background: #e91e63; width: {pct_su}%; height: 100%;"></div>
-                        <div style="background: #03a9f4; width: {pct_pi}%; height: 100%;"></div>
-                    </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-bottom: 10px;">
-                    <span style="color: #f48fb1;">{pct_su:.0f}%</span>
-                    <span style="color: #4fc3f7;">{pct_pi:.0f}%</span>
-                </div>
-                ''', unsafe_allow_html=True)
-
-            st.markdown("---")
-
-            # === SITUACAO / PENDENCIAS ===
-            df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
-            su_deve = df_desp[(df_desp["devedor"] == "Susanna") & (df_desp["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
-            pi_deve = df_desp[(df_desp["devedor"] == "Pietrah") & (df_desp["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
-
-            if not df_emp.empty:
-                df_emp["createdAt"] = pd.to_datetime(df_emp["createdAt"])
-                su_deve += df_emp[(df_emp["devedor"] == "Susanna") & (df_emp["status"] == "em aberto")]["valor"].sum()
-                pi_deve += df_emp[(df_emp["devedor"] == "Pietrah") & (df_emp["status"] == "em aberto")]["valor"].sum()
-
-            saldo = pi_deve - su_deve
-
-            if abs(saldo) < 0.01:
-                st.markdown('<div style="background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 12px; border-radius: 8px; text-align: center;"><h3 style="margin: 0; font-size: 16px; color: white;">✨ Quites!</h3></div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">💫 Situacao</p>', unsafe_allow_html=True)
-
-                # Cards de pendencias lado a lado
-                st.markdown(f'''
-                <div style="display: flex; flex-direction: row; gap: 8px; width: 100%; margin-bottom: 10px;">
-                    <div style="flex: 1; background: rgba(233,30,99,0.15); padding: 8px; border-radius: 8px; text-align: center; border: 1px solid rgba(233,30,99,0.3);">
-                        <span style="font-size: 10px; color: #f48fb1;">Susanna deve</span>
-                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">{fmt(su_deve)}</h3>
-                    </div>
-                    <div style="flex: 1; background: rgba(3,169,244,0.15); padding: 8px; border-radius: 8px; text-align: center; border: 1px solid rgba(3,169,244,0.3);">
-                        <span style="font-size: 10px; color: #4fc3f7;">Pietrah deve</span>
-                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">{fmt(pi_deve)}</h3>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
-
-                # Resultado final - quem paga
-                if saldo > 0:
-                    st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, #01579b 0%, #0277bd 100%); padding: 10px; border-radius: 8px; text-align: center;">
-                        <span style="font-size: 10px; color: #81d4fa;">Resultado</span>
-                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">👩 Pietrah paga {fmt(saldo)} p/ Susanna ⚡</h3>
-                    </div>
-                    ''', unsafe_allow_html=True)
+            if hoje >= quinto_dia_util_atual:
+                # Estamos apos o 5o dia util - periodo atual
+                data_inicio = quinto_dia_util_atual
+                # Proximo mes
+                if hoje.month == 12:
+                    prox_mes = date(hoje.year + 1, 1, 1)
                 else:
-                    st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, #880e4f 0%, #c2185b 100%); padding: 10px; border-radius: 8px; text-align: center;">
-                        <span style="font-size: 10px; color: #f48fb1;">Resultado</span>
-                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">⚡ Susanna paga {fmt(abs(saldo))} p/ Pietrah 👩</h3>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                    prox_mes = date(hoje.year, hoje.month + 1, 1)
+                data_fim = get_5o_dia_util(prox_mes.year, prox_mes.month) - timedelta(days=1)
+            else:
+                # Estamos antes do 5o dia util - periodo anterior
+                if hoje.month == 1:
+                    mes_anterior = date(hoje.year - 1, 12, 1)
+                else:
+                    mes_anterior = date(hoje.year, hoje.month - 1, 1)
+                data_inicio = get_5o_dia_util(mes_anterior.year, mes_anterior.month)
+                data_fim = quinto_dia_util_atual - timedelta(days=1)
 
-            st.markdown("---")
+            # Mostra periodo
+            st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Periodo: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
 
-            # === TOP CATEGORIAS DE CADA UMA ===
-            st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">🏆 Top Categorias</p>', unsafe_allow_html=True)
-
-            su_cat = mes_atual[mes_atual["buyer"] == "Susanna"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
-            pi_cat = mes_atual[mes_atual["buyer"] == "Pietrah"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
-
-            # Susanna top 3
-            if not su_cat.empty:
-                st.markdown('<span style="font-size: 10px; color: #f48fb1; font-weight: 500;">⚡ Susanna</span>', unsafe_allow_html=True)
-                for cat, val in su_cat.items():
-                    pct = (val / total_su * 100) if total_su > 0 else 0
-                    st.markdown(f'''
-                    <div style="margin-bottom: 4px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #ccc;">
-                            <span>{cat}</span><span>{fmt(val)}</span>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.1); border-radius: 3px; height: 6px; overflow: hidden;">
-                            <div style="background: #e91e63; width: {pct}%; height: 100%;"></div>
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
-
-            st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
-
-            # Pietrah top 3
-            if not pi_cat.empty:
-                st.markdown('<span style="font-size: 10px; color: #4fc3f7; font-weight: 500;">👩 Pietrah</span>', unsafe_allow_html=True)
-                for cat, val in pi_cat.items():
-                    pct = (val / total_pi * 100) if total_pi > 0 else 0
-                    st.markdown(f'''
-                    <div style="margin-bottom: 4px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #ccc;">
-                            <span>{cat}</span><span>{fmt(val)}</span>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.1); border-radius: 3px; height: 6px; overflow: hidden;">
-                            <div style="background: #03a9f4; width: {pct}%; height: 100%;"></div>
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
-
-            # === GASTOS DIVIDIDOS ===
+            # Filtra gastos divididos no periodo
             df_dividido = df_desp[df_desp["pagamento_compartilhado"].str.contains("Dividido", na=False)]
-            if not df_dividido.empty:
-                df_dividido_mes = df_dividido[(df_dividido["createdAt"].dt.month == hoje.month) & (df_dividido["createdAt"].dt.year == hoje.year)]
-                if not df_dividido_mes.empty:
-                    total_dividido = df_dividido_mes["total_value"].sum()
-                    st.markdown("---")
+            df_dividido_periodo = df_dividido[
+                (df_dividido["createdAt"].dt.date >= data_inicio) &
+                (df_dividido["createdAt"].dt.date <= data_fim)
+            ]
+
+            if not df_dividido_periodo.empty:
+                # Total gasto junto
+                total_dividido = df_dividido_periodo["total_value"].sum()
+                gasto_su = df_dividido_periodo[df_dividido_periodo["buyer"] == "Susanna"]["total_value"].sum()
+                gasto_pi = df_dividido_periodo[df_dividido_periodo["buyer"] == "Pietrah"]["total_value"].sum()
+
+                # Card principal - total dividido
+                st.markdown(f'''
+                <div style="background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%); padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 10px;">
+                    <span style="font-size: 12px; color: #ce93d8;">👯 Total Gasto Junto</span>
+                    <h2 style="margin: 4px 0; font-size: 22px; color: white; font-weight: 600;">{fmt(total_dividido)}</h2>
+                    <span style="font-size: 11px; color: #ce93d8;">Cada uma: {fmt(total_dividido/2)}</span>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # Cards de quem pagou o que
+                st.markdown(f'''
+                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%; margin-bottom: 12px;">
+                    <div style="flex: 1; background: linear-gradient(135deg, #c2185b 0%, #e91e63 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #f48fb1; text-align: center;">
+                        <span style="font-size: 10px; opacity: 0.9;">⚡ Susanna pagou</span><br>
+                        <span style="font-size: 14px; font-weight: 600;">{fmt(gasto_su)}</span>
+                    </div>
+                    <div style="flex: 1; background: linear-gradient(135deg, #0277bd 0%, #03a9f4 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #4fc3f7; text-align: center;">
+                        <span style="font-size: 10px; opacity: 0.9;">👩 Pietrah pagou</span><br>
+                        <span style="font-size: 14px; font-weight: 600;">{fmt(gasto_pi)}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # Grafico por categoria
+                st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">📊 Por Categoria</p>', unsafe_allow_html=True)
+
+                cat_dividido = df_dividido_periodo.groupby("label")["total_value"].sum().sort_values(ascending=False)
+                max_cat = cat_dividido.max() if not cat_dividido.empty else 1
+
+                cores_cat = ['#9c27b0', '#7b1fa2', '#6a1b9a', '#4a148c', '#ea80fc', '#e040fb', '#d500f9', '#aa00ff']
+                for i, (cat, val) in enumerate(cat_dividido.items()):
+                    pct = (val / max_cat) * 100
+                    pct_total = (val / total_dividido) * 100
+                    cor = cores_cat[i % len(cores_cat)]
                     st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%); padding: 10px; border-radius: 8px; text-align: center;">
-                        <span style="font-size: 10px; color: #ce93d8;">👯 Gastos Divididos</span>
-                        <h3 style="margin: 2px 0 0 0; font-size: 16px; color: white;">{fmt(total_dividido)}</h3>
-                        <span style="font-size: 9px; color: #ce93d8;">Cada uma: {fmt(total_dividido/2)}</span>
+                    <div style="margin-bottom: 6px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-bottom: 2px;">
+                            <span>{cat}</span>
+                            <span>{fmt(val)} ({pct_total:.0f}%)</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: {cor}; width: {pct}%; height: 100%; border-radius: 4px;"></div>
+                        </div>
                     </div>
                     ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # Detalhamento dos gastos
+                st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">📋 Detalhamento</p>', unsafe_allow_html=True)
+
+                df_ordenado = df_dividido_periodo.sort_values("createdAt", ascending=False)
+                for _, gasto in df_ordenado.iterrows():
+                    data_str = gasto["createdAt"].strftime("%d/%m")
+                    item_desc = gasto.get("item", "") or gasto.get("description", "") or "-"
+                    cor_borda = "#e91e63" if gasto["buyer"] == "Susanna" else "#03a9f4"
+                    icone = "⚡" if gasto["buyer"] == "Susanna" else "👩"
+
+                    st.markdown(f'''
+                    <div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid {cor_borda};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 10px; color: #aaa;">{gasto["label"]}</span><br>
+                                <span style="font-size: 11px; color: white;">{item_desc}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 12px; color: white; font-weight: 600;">{fmt(gasto["total_value"])}</span><br>
+                                <span style="font-size: 9px; color: #888;">{icone} {data_str}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            else:
+                st.info("📝 Nenhum gasto dividido neste periodo.")
         else:
             st.info("📝 Sem gastos ainda.")
 
