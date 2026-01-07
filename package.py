@@ -184,7 +184,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+@st.cache_resource
 def connect_mongodb():
+    """Conexao cacheada com MongoDB - persiste entre reruns."""
     URI = st.secrets["uri"]
 
     try:
@@ -218,6 +220,59 @@ def get_collections(client):
         db_name = "financas"
     db = client[db_name]
     return {"despesas": db["despesas"], "emprestimos": db["emprestimos"], "metas": db["metas"], "quitacoes": db["quitacoes"], "contas_fixas": db["contas_fixas"], "emprestimos_terceiros": db["emprestimos_terceiros"], "dividas_terceiros": db["dividas_terceiros"]}
+
+
+def limpar_cache_dados():
+    """Limpa cache de dados para refletir alteracoes."""
+    st.cache_data.clear()
+
+
+@st.cache_data(ttl=300)
+def carregar_despesas(_colls):
+    """Carrega despesas com cache de 5 minutos."""
+    return list(_colls["despesas"].find({}))
+
+
+@st.cache_data(ttl=300)
+def carregar_emprestimos(_colls):
+    """Carrega emprestimos com cache de 5 minutos."""
+    return list(_colls["emprestimos"].find({}))
+
+
+@st.cache_data(ttl=300)
+def carregar_quitacoes(_colls):
+    """Carrega quitacoes com cache de 5 minutos."""
+    return list(_colls["quitacoes"].find({}))
+
+
+@st.cache_data(ttl=300)
+def carregar_metas(_colls, user):
+    """Carrega metas do usuario com cache de 5 minutos."""
+    return list(_colls["metas"].find({"ativo": True, "pessoa": user}))
+
+
+@st.cache_data(ttl=300)
+def carregar_contas_fixas(_colls):
+    """Carrega contas fixas com cache de 5 minutos."""
+    return list(_colls["contas_fixas"].find({"ativo": True}))
+
+
+@st.cache_data(ttl=300)
+def carregar_emprestimos_terceiros(_colls, user):
+    """Carrega emprestimos a terceiros do usuario."""
+    return list(_colls["emprestimos_terceiros"].find({"credor": user, "status": "em aberto"}))
+
+
+@st.cache_data(ttl=300)
+def carregar_dividas_terceiros(_colls, user):
+    """Carrega dividas a terceiros do usuario."""
+    return list(_colls["dividas_terceiros"].find({"devedor": user, "status": "em aberto"}))
+
+
+@st.cache_data(ttl=300)
+def carregar_pagamentos_contas_fixas(_colls, user, mes_ano):
+    """Carrega pagamentos de contas fixas do usuario no mes."""
+    return list(_colls["quitacoes"].find({"tipo": "conta_fixa", "pagador": user, "mes_ano": mes_ano}))
 
 
 def fmt(valor):
@@ -307,9 +362,9 @@ def main():
     if menu == "🏠 Inicio":
         st.markdown(f'<p class="page-title">💰 Ola, {user}!</p>', unsafe_allow_html=True)
 
-        df = pd.DataFrame(list(colls["despesas"].find({})))
-        df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
-        df_contas_fixas_inicio = pd.DataFrame(list(colls["contas_fixas"].find({"ativo": True})))
+        df = pd.DataFrame(carregar_despesas(colls))
+        df_emp = pd.DataFrame(carregar_emprestimos(colls))
+        df_contas_fixas_inicio = pd.DataFrame(carregar_contas_fixas(colls))
 
         if not df.empty:
             df["createdAt"] = pd.to_datetime(df["createdAt"])
@@ -430,7 +485,7 @@ def main():
             saldo = outro_deve - user_deve
 
             # Busca dividas a terceiros
-            df_dividas_terceiros = pd.DataFrame(list(colls["dividas_terceiros"].find({"devedor": user, "status": "em aberto"})))
+            df_dividas_terceiros = pd.DataFrame(carregar_dividas_terceiros(colls, user))
             total_dividas = df_dividas_terceiros["valor"].sum() if not df_dividas_terceiros.empty else 0
 
             # Saldo
@@ -562,6 +617,7 @@ def main():
                             "descricao": f"{label} - {item}" if item else label, "observacao": description, "status": "em aberto"
                         })
 
+                    limpar_cache_dados()
                     st.success(f"✅ Gasto de {fmt(valor_total)} salvo!")
                     st.balloons()
                 except Exception as e:
@@ -588,6 +644,7 @@ def main():
                     "data_devolucao": datetime.combine(data_devolucao, datetime.min.time()),
                     "status": "em aberto"
                 })
+                limpar_cache_dados()
                 st.success(f"✅ Emprestimo de {fmt(valor_terceiro)} pra {pessoa_terceiro} registrado!")
                 st.balloons()
 
@@ -612,6 +669,7 @@ def main():
                     "data_pagamento": datetime.combine(data_pagamento, datetime.min.time()),
                     "status": "em aberto"
                 })
+                limpar_cache_dados()
                 st.success(f"✅ Divida de {fmt(valor_divida)} com {pessoa_credor} registrada!")
                 st.balloons()
 
@@ -637,6 +695,7 @@ def main():
                     "ativo": True, "createdAt": datetime.now()
                 }
                 colls["contas_fixas"].insert_one(conta_fixa)
+                limpar_cache_dados()
                 st.success("✅ Conta fixa cadastrada!")
                 st.balloons()
 
@@ -653,9 +712,9 @@ def main():
     elif menu == "🤝 Acerto":
         st.markdown('<p class="page-title">🤝 Acerto de Contas</p>', unsafe_allow_html=True)
 
-        df_desp = pd.DataFrame(list(colls["despesas"].find({})))
-        df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
-        df_logs = pd.DataFrame(list(colls["quitacoes"].find({})))
+        df_desp = pd.DataFrame(carregar_despesas(colls))
+        df_emp = pd.DataFrame(carregar_emprestimos(colls))
+        df_logs = pd.DataFrame(carregar_quitacoes(colls))
 
         # Calcula totais brutos (o que cada uma deve)
         user_deve_desp, outro_deve_desp = 0, 0
@@ -720,6 +779,7 @@ def main():
                     {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
                 )
 
+                limpar_cache_dados()
                 st.success(f"✅ Acertado! {quem_paga} pagou {fmt(abs(saldo_liquido))} pra {quem_recebe}")
                 st.balloons()
                 st.rerun()
@@ -812,7 +872,7 @@ def main():
         st.markdown('<p class="section-title">🤝 Emprestimos a Terceiros</p>', unsafe_allow_html=True)
 
         # Busca emprestimos a terceiros do usuario atual (da nova collection)
-        df_terceiros = pd.DataFrame(list(colls["emprestimos_terceiros"].find({"credor": user, "status": "em aberto"})))
+        df_terceiros = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
 
         if not df_terceiros.empty:
             # Calcula total
@@ -838,6 +898,7 @@ def main():
                             {"_id": emp["_id"]},
                             {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
                         )
+                        limpar_cache_dados()
                         st.rerun()
         else:
             st.caption("Nenhum emprestimo a terceiros")
@@ -846,7 +907,7 @@ def main():
         st.markdown("---")
         st.markdown('<p class="section-title">💸 Minhas Dividas</p>', unsafe_allow_html=True)
 
-        df_dividas = pd.DataFrame(list(colls["dividas_terceiros"].find({"devedor": user, "status": "em aberto"})))
+        df_dividas = pd.DataFrame(carregar_dividas_terceiros(colls, user))
 
         if not df_dividas.empty:
             total_dividas = df_dividas["valor"].sum()
@@ -870,6 +931,7 @@ def main():
                             {"_id": div["_id"]},
                             {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
                         )
+                        limpar_cache_dados()
                         st.rerun()
         else:
             st.caption("Nenhuma divida a terceiros")
@@ -878,7 +940,7 @@ def main():
         st.markdown("---")
         st.markdown('<p class="section-title">📋 Contas Fixas do Mes</p>', unsafe_allow_html=True)
 
-        df_contas_fixas = pd.DataFrame(list(colls["contas_fixas"].find({"ativo": True})))
+        df_contas_fixas = pd.DataFrame(carregar_contas_fixas(colls))
         hoje = date.today()
         mes_ano_atual = f"{hoje.year}-{hoje.month:02d}"
 
@@ -909,11 +971,7 @@ def main():
 
             if contas_nao_credito:
                 # Busca quais contas ja foram pagas este mes
-                df_pagamentos = pd.DataFrame(list(colls["quitacoes"].find({
-                    "tipo": "conta_fixa",
-                    "pagador": user,
-                    "mes_ano": mes_ano_atual
-                })))
+                df_pagamentos = pd.DataFrame(carregar_pagamentos_contas_fixas(colls, user, mes_ano_atual))
                 contas_pagas_ids = set(df_pagamentos["conta_fixa_id"].astype(str).tolist()) if not df_pagamentos.empty and "conta_fixa_id" in df_pagamentos.columns else set()
 
                 total_contas_fixas = sum(c["meu_valor"] for c in contas_nao_credito)
@@ -977,6 +1035,7 @@ def main():
                                     "status_pendencia": None,
                                     "origem": "conta_fixa"
                                 })
+                                limpar_cache_dados()
                                 st.rerun()
                         else:
                             st.markdown('<span style="color: #4caf50; font-size: 14px;">Paga</span>', unsafe_allow_html=True)
@@ -998,11 +1057,12 @@ def main():
 
                 if st.form_submit_button("✅ Criar Meta", use_container_width=True):
                     colls["metas"].insert_one({"categoria": categoria_meta, "pessoa": user, "limite": valor_meta, "ativo": True, "createdAt": datetime.now()})
+                    limpar_cache_dados()
                     st.success("✅ Meta criada!")
                     st.rerun()
 
-        df_metas = pd.DataFrame(list(colls["metas"].find({"ativo": True, "pessoa": user})))
-        df_desp = pd.DataFrame(list(colls["despesas"].find({})))
+        df_metas = pd.DataFrame(carregar_metas(colls, user))
+        df_desp = pd.DataFrame(carregar_despesas(colls))
 
         if not df_metas.empty and not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
@@ -1035,7 +1095,7 @@ def main():
     elif menu == "👯 Ambas":
         st.markdown('<p class="page-title">👯 Gastos Conjuntos</p>', unsafe_allow_html=True)
 
-        df_desp = pd.DataFrame(list(colls["despesas"].find({})))
+        df_desp = pd.DataFrame(carregar_despesas(colls))
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
@@ -1173,8 +1233,8 @@ def main():
     elif menu == "📊 Relatorio":
         st.markdown('<p class="page-title">📊 Meu Relatorio</p>', unsafe_allow_html=True)
 
-        df_desp = pd.DataFrame(list(colls["despesas"].find({})))
-        df_contas_fixas = pd.DataFrame(list(colls["contas_fixas"].find({"ativo": True})))
+        df_desp = pd.DataFrame(carregar_despesas(colls))
+        df_contas_fixas = pd.DataFrame(carregar_contas_fixas(colls))
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
@@ -1485,7 +1545,7 @@ def main():
     elif menu == "📈 Evolucao":
         st.markdown('<p class="page-title">📈 Minha Evolucao</p>', unsafe_allow_html=True)
 
-        df_desp = pd.DataFrame(list(colls["despesas"].find({})))
+        df_desp = pd.DataFrame(carregar_despesas(colls))
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
