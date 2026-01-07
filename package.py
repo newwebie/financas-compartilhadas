@@ -496,14 +496,29 @@ def main():
             st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Fatura: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
 
             # === DASHBOARD - 3 CARDS ===
-            # Card 1: Gastos (tudo menos Cofrinho e Renda Variavel)
-            gastos_reais = meus_registros[~meus_registros["label"].str.contains("Cofrinho|Renda Variavel", na=False)]["total_value"].sum() if not meus_registros.empty else 0
+            # Card 1: Gastos (tudo que JA FOI gasto - credito, parcelamentos, contas fixas PAGAS e contas fixas no credito)
+            # Inclui despesas com origem="conta_fixa" porque significa que foi paga
+            df_gastos_card = meus_registros[~meus_registros["label"].str.contains("Cofrinho|Renda Variavel", na=False)] if not meus_registros.empty else pd.DataFrame()
+            gastos_reais = df_gastos_card["total_value"].sum() if not df_gastos_card.empty else 0
+
+            # Soma contas fixas no credito (ja estao comprometidas automaticamente)
+            contas_fixas_credito_inicio = 0
+            if not df_contas_fixas_inicio.empty:
+                for _, conta in df_contas_fixas_inicio.iterrows():
+                    if conta.get("cartao_credito", False):
+                        if conta["responsavel"] == user:
+                            contas_fixas_credito_inicio += conta["valor"]
+                        elif conta["responsavel"] == "Dividido":
+                            contas_fixas_credito_inicio += conta["valor"] / 2
+            gastos_reais += contas_fixas_credito_inicio
 
             # Card 2: Cofrinho
-            cofrinho = meus_registros[meus_registros["label"].str.contains("Cofrinho", na=False)]["total_value"].sum() if not meus_registros.empty else 0
+            df_cofrinho_card = meus_registros[meus_registros["label"].str.contains("Cofrinho", na=False)] if not meus_registros.empty else pd.DataFrame()
+            cofrinho = df_cofrinho_card["total_value"].sum() if not df_cofrinho_card.empty else 0
 
             # Card 3: Renda Variavel
-            renda_variavel = meus_registros[meus_registros["label"].str.contains("Renda Variavel", na=False)]["total_value"].sum() if not meus_registros.empty else 0
+            df_extra_card = meus_registros[meus_registros["label"].str.contains("Renda Variavel", na=False)] if not meus_registros.empty else pd.DataFrame()
+            renda_variavel = df_extra_card["total_value"].sum() if not df_extra_card.empty else 0
 
             # Exibir os 3 cards com flexbox (garante lado a lado em mobile)
             cor_gastos = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
@@ -533,7 +548,7 @@ def main():
             # === GRAFICO POR CATEGORIA (incluindo Cofrinho e Contas Fixas) ===
             st.markdown('<p class="section-title">📊 Gastos por Categoria</p>', unsafe_allow_html=True)
 
-            # Exclui apenas Renda Variavel do grafico (Cofrinho aparece)
+            # Exclui apenas Renda Variavel do grafico
             gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)]
             user_cat_series = gastos_para_grafico.groupby("label")["total_value"].sum() if not gastos_para_grafico.empty else pd.Series(dtype=float)
 
@@ -1374,8 +1389,10 @@ def main():
                 (df_desp["createdAt"].dt.date <= data_fim)
             ]
 
-            # Filtra gastos reais (sem Cofrinho e Renda Variavel)
+            # Filtra gastos reais (sem Cofrinho, Renda Variavel e contas fixas pagas - evita duplicacao)
             df_user_gastos = df_user[~df_user["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
+            if "origem" in df_user_gastos.columns:
+                df_user_gastos = df_user_gastos[df_user_gastos["origem"].fillna("") != "conta_fixa"]
 
             # Calcula totais de contas fixas do usuario
             user_fixas = 0
