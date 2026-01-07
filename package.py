@@ -288,7 +288,20 @@ def main():
     with st.sidebar:
         show_user_badge()
         st.markdown("### Menu")
-        menu = st.radio("", ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao"], label_visibility="collapsed")
+
+        # Inicializa menu selecionado
+        if "menu_selecionado" not in st.session_state:
+            st.session_state.menu_selecionado = "🏠 Inicio"
+
+        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao"]
+
+        for opcao in menu_opcoes:
+            tipo_btn = "primary" if st.session_state.menu_selecionado == opcao else "secondary"
+            if st.button(opcao, use_container_width=True, key=f"menu_{opcao}", type=tipo_btn):
+                st.session_state.menu_selecionado = opcao
+                st.rerun()
+
+        menu = st.session_state.menu_selecionado
 
     # ========== INICIO ==========
     if menu == "🏠 Inicio":
@@ -296,6 +309,7 @@ def main():
 
         df = pd.DataFrame(list(colls["despesas"].find({})))
         df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
+        df_contas_fixas_inicio = pd.DataFrame(list(colls["contas_fixas"].find({"ativo": True})))
 
         if not df.empty:
             df["createdAt"] = pd.to_datetime(df["createdAt"])
@@ -340,12 +354,35 @@ def main():
             st.markdown("")
             st.markdown("")
 
-            # === GRAFICO POR CATEGORIA (incluindo Cofrinho) ===
+            # === GRAFICO POR CATEGORIA (incluindo Cofrinho e Contas Fixas) ===
             st.markdown('<p class="section-title">📊 Gastos por Categoria</p>', unsafe_allow_html=True)
 
             # Exclui apenas Renda Variavel do grafico (Cofrinho aparece)
             gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)]
-            user_cat = gastos_para_grafico.groupby("label")["total_value"].sum().reset_index()
+            user_cat_series = gastos_para_grafico.groupby("label")["total_value"].sum() if not gastos_para_grafico.empty else pd.Series(dtype=float)
+
+            # Adiciona contas fixas de credito ao grafico
+            if not df_contas_fixas_inicio.empty:
+                for _, conta in df_contas_fixas_inicio.iterrows():
+                    if conta.get("cartao_credito", False):
+                        valor_meu = conta["valor"] if conta["responsavel"] == user else (conta["valor"] / 2 if conta["responsavel"] == "Dividido" else 0)
+                        if valor_meu > 0:
+                            cat_original = conta.get("categoria", "📄 Contas")
+                            # Mapeia categoria da conta fixa para categoria de despesa
+                            if "Saude" in str(cat_original) or "saude" in str(cat_original).lower():
+                                cat_label = "💊 Saude"
+                            elif cat_original in ["📄 Contas", "💊 Saude", "📦 Outros"]:
+                                cat_label = cat_original
+                            else:
+                                cat_label = "📄 Contas"
+
+                            if cat_label in user_cat_series.index:
+                                user_cat_series[cat_label] += valor_meu
+                            else:
+                                user_cat_series[cat_label] = valor_meu
+
+            user_cat = user_cat_series.reset_index()
+            user_cat.columns = ["label", "total_value"]
             user_cat = user_cat.sort_values("total_value", ascending=False)
 
             if not user_cat.empty:
@@ -454,63 +491,85 @@ def main():
     elif menu == "➕ Novo":
         st.markdown('<p class="page-title">➕ Novo Registro</p>', unsafe_allow_html=True)
 
-        with st.form("form_novo_gasto", clear_on_submit=True):
+        # Inicializa estado do formulario selecionado
+        if "form_selecionado" not in st.session_state:
+            st.session_state.form_selecionado = None
 
-            label = st.selectbox("🏷️ Categoria", ["🍔 Comida", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "🐷 Cofrinho", "💵 Renda Variavel", "📦 Outros"])
-            item = st.text_input("📝 Item")
-            description = st.text_input("💬 Descricao")
+        # Botoes em grid 2x2
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💸 Gasto", use_container_width=True, type="primary" if st.session_state.form_selecionado == "gasto" else "secondary"):
+                st.session_state.form_selecionado = "gasto"
+                st.rerun()
+        with col2:
+            if st.button("🤝 Emprestei", use_container_width=True, type="primary" if st.session_state.form_selecionado == "emprestei" else "secondary"):
+                st.session_state.form_selecionado = "emprestei"
+                st.rerun()
 
-            quantidade = st.number_input("🔢 Quantidade", min_value=1, value=1)
-            preco = st.number_input("💵 Preco", min_value=0.01, value=1.00, format="%.2f")
+        col3, col4 = st.columns(2)
+        with col3:
+            if st.button("💳 Devo", use_container_width=True, type="primary" if st.session_state.form_selecionado == "devo" else "secondary"):
+                st.session_state.form_selecionado = "devo"
+                st.rerun()
+        with col4:
+            if st.button("📋 Conta Fixa", use_container_width=True, type="primary" if st.session_state.form_selecionado == "conta_fixa" else "secondary"):
+                st.session_state.form_selecionado = "conta_fixa"
+                st.rerun()
 
-            pagamento = st.selectbox("💳 Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"])
-            tipo_despesa = st.selectbox("🤝 Tipo de compra", ["👤 Pra mim", "👯 Dividido (me deve metade)", "🎁 Pra outra (me deve tudo)"])
-            parcelas = st.number_input("📅 Parcelas", min_value=0, value=0)
+        st.markdown("")
 
-            submitted = st.form_submit_button("✅ Salvar Gasto", use_container_width=True)
+        # ===== FORMULARIO GASTO =====
+        if st.session_state.form_selecionado == "gasto":
+            st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">💸 Registrar Gasto</p>', unsafe_allow_html=True)
+            with st.form("form_novo_gasto", clear_on_submit=True):
 
-        if submitted:
-            try:
-                valor_total = quantidade * preco
+                label = st.selectbox("🏷️ Categoria", ["🍔 Comida", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "🐷 Cofrinho", "💵 Renda Variavel", "📦 Outros"])
+                item = st.text_input("📝 Item")
+                description = st.text_input("💬 Descricao")
 
-                # Inicializa pendencia como vazia
-                pend = {"tem_pendencia": False, "devedor": None, "valor_pendente": None, "status_pendencia": None}
+                quantidade = st.number_input("🔢 Quantidade", min_value=1, value=1)
+                preco = st.number_input("💵 Preco", min_value=0.01, value=1.00, format="%.2f")
 
-                # "Pra mim" - so adiciona nos meus gastos, sem pendencia
-                # "Dividido" - adiciona nos meus gastos + outra me deve metade
-                # "Pra outra" - adiciona nos meus gastos + outra me deve tudo
+                pagamento = st.selectbox("💳 Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"])
+                tipo_despesa = st.selectbox("🤝 Tipo de compra", ["👤 Pra mim", "👯 Dividido (me deve metade)", "🎁 Pra outra (me deve tudo)"])
+                parcelas = st.number_input("📅 Parcelas", min_value=0, value=0)
 
-                if "Dividido" in tipo_despesa:
-                    # Eu paguei tudo, mas a outra me deve metade
-                    pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": round(valor_total / 2, 2), "status_pendencia": "em aberto"}
-                elif "Pra outra" in tipo_despesa:
-                    # Eu comprei pra outra pessoa, ela me deve o valor total
-                    pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": valor_total, "status_pendencia": "em aberto"}
+                submitted = st.form_submit_button("✅ Salvar Gasto", use_container_width=True)
 
-                doc = {
-                    "label": label, "buyer": user, "item": item, "description": description,
-                    "quantity": quantidade, "total_value": valor_total, "payment_method": pagamento,
-                    "installment": parcelas, "createdAt": datetime.now(), "pagamento_compartilhado": tipo_despesa, **pend
-                }
+            if submitted:
+                try:
+                    valor_total = quantidade * preco
 
-                result = colls["despesas"].insert_one(doc)
+                    pend = {"tem_pendencia": False, "devedor": None, "valor_pendente": None, "status_pendencia": None}
 
-                # Registra na collection de quitacoes se houver pendencia
-                if pend["tem_pendencia"]:
-                    colls["quitacoes"].insert_one({
-                        "tipo": "despesa_compartilhada", "despesa_id": result.inserted_id, "data": datetime.now(),
-                        "credor": user, "devedor": pend["devedor"], "valor": pend["valor_pendente"],
-                        "descricao": f"{label} - {item}" if item else label, "observacao": description, "status": "em aberto"
-                    })
+                    if "Dividido" in tipo_despesa:
+                        pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": round(valor_total / 2, 2), "status_pendencia": "em aberto"}
+                    elif "Pra outra" in tipo_despesa:
+                        pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": valor_total, "status_pendencia": "em aberto"}
 
-                st.success(f"✅ Gasto de {fmt(valor_total)} salvo!")
-                st.balloons()
-            except Exception as e:
-                st.error(f"❌ Erro: {e}")
+                    doc = {
+                        "label": label, "buyer": user, "item": item, "description": description,
+                        "quantity": quantidade, "total_value": valor_total, "payment_method": pagamento,
+                        "installment": parcelas, "createdAt": datetime.now(), "pagamento_compartilhado": tipo_despesa, **pend
+                    }
 
-        st.markdown("---")
+                    result = colls["despesas"].insert_one(doc)
 
-        with st.expander("🤝 Emprestimo a Terceiros"):
+                    if pend["tem_pendencia"]:
+                        colls["quitacoes"].insert_one({
+                            "tipo": "despesa_compartilhada", "despesa_id": result.inserted_id, "data": datetime.now(),
+                            "credor": user, "devedor": pend["devedor"], "valor": pend["valor_pendente"],
+                            "descricao": f"{label} - {item}" if item else label, "observacao": description, "status": "em aberto"
+                        })
+
+                    st.success(f"✅ Gasto de {fmt(valor_total)} salvo!")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"❌ Erro: {e}")
+
+        # ===== FORMULARIO EMPRESTEI =====
+        elif st.session_state.form_selecionado == "emprestei":
+            st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">🤝 Emprestei pra Alguem</p>', unsafe_allow_html=True)
             with st.form("form_emprestimo_terceiro", clear_on_submit=True):
                 pessoa_terceiro = st.text_input("👤 Pessoa", placeholder="Nome de quem te deve")
                 valor_terceiro = st.number_input("💵 Valor", min_value=0.01, value=10.00, format="%.2f", key="valor_emp_terceiro")
@@ -530,8 +589,11 @@ def main():
                     "status": "em aberto"
                 })
                 st.success(f"✅ Emprestimo de {fmt(valor_terceiro)} pra {pessoa_terceiro} registrado!")
+                st.balloons()
 
-        with st.expander("💸 Devo pra Alguem"):
+        # ===== FORMULARIO DEVO =====
+        elif st.session_state.form_selecionado == "devo":
+            st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">💳 Devo pra Alguem</p>', unsafe_allow_html=True)
             with st.form("form_divida_terceiro", clear_on_submit=True):
                 pessoa_credor = st.text_input("👤 Pra quem devo", placeholder="Nome de quem te emprestou")
                 valor_divida = st.number_input("💵 Valor", min_value=0.01, value=10.00, format="%.2f", key="valor_divida_terceiro")
@@ -551,14 +613,18 @@ def main():
                     "status": "em aberto"
                 })
                 st.success(f"✅ Divida de {fmt(valor_divida)} com {pessoa_credor} registrada!")
+                st.balloons()
 
-        with st.expander("📋 Cadastrar Conta Fixa"):
+        # ===== FORMULARIO CONTA FIXA =====
+        elif st.session_state.form_selecionado == "conta_fixa":
+            st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">📋 Cadastrar Conta Fixa</p>', unsafe_allow_html=True)
             with st.form("form_conta_fixa", clear_on_submit=True):
                 nome_conta = st.text_input("📝 Nome da conta", placeholder="Ex: Aluguel, Internet...")
                 valor_conta = st.number_input("💵 Valor", min_value=0.01, value=100.00, format="%.2f")
                 dia_vencimento = st.number_input("📅 Dia vencimento", min_value=1, max_value=31, value=10)
                 responsavel = st.selectbox("👤 Responsavel", [user, outro, "Dividido"])
-                categoria_conta = st.selectbox("🏷️ Categoria", ["Casa 🏠 ", "📶 Internet", "📱 Celular", "🎬 Streaming", "➕ Saude", "📦 Outros"])
+                categoria_conta = st.selectbox("🏷️ Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"])
+                cartao_credito = st.checkbox("💳 Conta no cartao de credito", value=False, help="Marque se essa conta e paga no cartao de credito")
                 obs_conta = st.text_input("💬 Observacao")
 
                 cf_submitted = st.form_submit_button("✅ Cadastrar", use_container_width=True)
@@ -567,10 +633,21 @@ def main():
                 conta_fixa = {
                     "nome": nome_conta, "valor": valor_conta, "dia_vencimento": dia_vencimento,
                     "responsavel": responsavel, "categoria": categoria_conta, "observacao": obs_conta,
+                    "cartao_credito": cartao_credito,
                     "ativo": True, "createdAt": datetime.now()
                 }
                 colls["contas_fixas"].insert_one(conta_fixa)
                 st.success("✅ Conta fixa cadastrada!")
+                st.balloons()
+
+        # Mensagem se nenhum selecionado
+        else:
+            st.markdown('''
+            <div style="text-align: center; padding: 30px; color: #888;">
+                <span style="font-size: 32px;">👆</span><br>
+                <span style="font-size: 12px;">Selecione o tipo de registro</span>
+            </div>
+            ''', unsafe_allow_html=True)
 
     # ========== ACERTO DE CONTAS ==========
     elif menu == "🤝 Acerto":
@@ -740,7 +817,7 @@ def main():
         if not df_terceiros.empty:
             # Calcula total
             total_terceiros = df_terceiros["valor"].sum()
-            st.markdown(f'<div style="background: rgba(156,39,176,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 10px; color: #ce93d8;">Total a receber</span><br><span style="font-size: 14px; color: white; font-weight: 600;">{fmt(total_terceiros)}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background: rgba(156,39,176,0.2); padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 12px; color: #ce93d8;">Total a receber</span><br><span style="font-size: 18px; color: white; font-weight: 600;">{fmt(total_terceiros)}</span></div>', unsafe_allow_html=True)
 
             for i, (_, emp) in enumerate(df_terceiros.iterrows()):
                 # Formata datas
@@ -749,11 +826,11 @@ def main():
 
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #9c27b0;">
-                        <span style="font-size: 12px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</span><br>
-                        <span style="font-size: 11px; color: #aaa;">{emp.get("descricao", "-")}</span><br>
-                        <span style="font-size: 12px; color: white;">{fmt(emp["valor"])}</span>
-                        <span style="font-size: 10px; color: #888;"> | Emp: {data_emp} | Dev: {data_dev}</span>
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #9c27b0;">
+                        <span style="font-size: 14px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</span><br>
+                        <span style="font-size: 12px; color: #aaa;">{emp.get("descricao", "-")}</span><br>
+                        <span style="font-size: 14px; color: white;">{fmt(emp["valor"])}</span>
+                        <span style="font-size: 11px; color: #888;"> | Emp: {data_emp} | Dev: {data_dev}</span>
                     </div>''', unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"quitar_terceiro_{i}", help="Recebido"):
@@ -773,7 +850,7 @@ def main():
 
         if not df_dividas.empty:
             total_dividas = df_dividas["valor"].sum()
-            st.markdown(f'<div style="background: rgba(244,67,54,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 10px; color: #ef9a9a;">Total que devo</span><br><span style="font-size: 14px; color: white; font-weight: 600;">{fmt(total_dividas)}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background: rgba(244,67,54,0.2); padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 12px; color: #ef9a9a;">Total que devo</span><br><span style="font-size: 18px; color: white; font-weight: 600;">{fmt(total_dividas)}</span></div>', unsafe_allow_html=True)
 
             for i, (_, div) in enumerate(df_dividas.iterrows()):
                 data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
@@ -781,11 +858,11 @@ def main():
 
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336;">
-                        <span style="font-size: 12px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</span><br>
-                        <span style="font-size: 11px; color: #aaa;">{div.get("descricao", "-")}</span><br>
-                        <span style="font-size: 12px; color: white;">{fmt(div["valor"])}</span>
-                        <span style="font-size: 10px; color: #888;"> | Emp: {data_emp} | Pag: {data_pag}</span>
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336;">
+                        <span style="font-size: 14px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</span><br>
+                        <span style="font-size: 12px; color: #aaa;">{div.get("descricao", "-")}</span><br>
+                        <span style="font-size: 14px; color: white;">{fmt(div["valor"])}</span>
+                        <span style="font-size: 11px; color: #888;"> | Emp: {data_emp} | Pag: {data_pag}</span>
                     </div>''', unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"quitar_divida_{i}", help="Paguei"):
@@ -796,6 +873,117 @@ def main():
                         st.rerun()
         else:
             st.caption("Nenhuma divida a terceiros")
+
+        # ========== CONTAS FIXAS (NAO CREDITO) ==========
+        st.markdown("---")
+        st.markdown('<p class="section-title">📋 Contas Fixas do Mes</p>', unsafe_allow_html=True)
+
+        df_contas_fixas = pd.DataFrame(list(colls["contas_fixas"].find({"ativo": True})))
+        hoje = date.today()
+        mes_ano_atual = f"{hoje.year}-{hoje.month:02d}"
+
+        if not df_contas_fixas.empty:
+            # Filtra contas fixas do usuario que NAO sao de cartao de credito
+            contas_nao_credito = []
+            for _, conta in df_contas_fixas.iterrows():
+                is_credito = conta.get("cartao_credito", False)
+                if not is_credito:
+                    if conta["responsavel"] == user:
+                        contas_nao_credito.append({
+                            "_id": conta["_id"],
+                            "nome": conta["nome"],
+                            "valor": conta["valor"],
+                            "dia_vencimento": conta["dia_vencimento"],
+                            "categoria": conta.get("categoria", ""),
+                            "meu_valor": conta["valor"]
+                        })
+                    elif conta["responsavel"] == "Dividido":
+                        contas_nao_credito.append({
+                            "_id": conta["_id"],
+                            "nome": conta["nome"],
+                            "valor": conta["valor"],
+                            "dia_vencimento": conta["dia_vencimento"],
+                            "categoria": conta.get("categoria", ""),
+                            "meu_valor": conta["valor"] / 2
+                        })
+
+            if contas_nao_credito:
+                # Busca quais contas ja foram pagas este mes
+                df_pagamentos = pd.DataFrame(list(colls["quitacoes"].find({
+                    "tipo": "conta_fixa",
+                    "pagador": user,
+                    "mes_ano": mes_ano_atual
+                })))
+                contas_pagas_ids = set(df_pagamentos["conta_fixa_id"].astype(str).tolist()) if not df_pagamentos.empty and "conta_fixa_id" in df_pagamentos.columns else set()
+
+                total_contas_fixas = sum(c["meu_valor"] for c in contas_nao_credito)
+                total_pagas = sum(c["meu_valor"] for c in contas_nao_credito if str(c["_id"]) in contas_pagas_ids)
+                total_pendentes = total_contas_fixas - total_pagas
+
+                st.markdown(f'''
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <div style="flex: 1; background: rgba(76,175,80,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 11px; color: #81c784;">Pagas</span><br>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">{fmt(total_pagas)}</span>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,152,0,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 11px; color: #ffcc80;">Pendentes</span><br>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">{fmt(total_pendentes)}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                for i, conta in enumerate(contas_nao_credito):
+                    ja_paga = str(conta["_id"]) in contas_pagas_ids
+                    cor_borda = "#4caf50" if ja_paga else "#ff9800"
+                    icone_status = "✅" if ja_paga else "⏳"
+
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid {cor_borda};">
+                            <span style="font-size: 14px; color: white; font-weight: 600;">{icone_status} {conta["nome"]}</span><br>
+                            <span style="font-size: 12px; color: #aaa;">{conta["categoria"]}</span>
+                            <span style="font-size: 14px; color: white; float: right;">{fmt(conta["meu_valor"])}</span><br>
+                            <span style="font-size: 11px; color: #888;">Vence dia {int(conta["dia_vencimento"])}</span>
+                        </div>''', unsafe_allow_html=True)
+                    with col2:
+                        if not ja_paga:
+                            if st.button("✅", key=f"pagar_conta_fixa_{i}", help="Marcar como paga"):
+                                # Registra pagamento da conta fixa
+                                colls["quitacoes"].insert_one({
+                                    "tipo": "conta_fixa",
+                                    "conta_fixa_id": conta["_id"],
+                                    "pagador": user,
+                                    "valor": conta["meu_valor"],
+                                    "nome_conta": conta["nome"],
+                                    "mes_ano": mes_ano_atual,
+                                    "data": datetime.now()
+                                })
+                                # Registra como despesa
+                                colls["despesas"].insert_one({
+                                    "label": conta["categoria"] if conta["categoria"] in ["📄 Contas", "💊 Saude", "📦 Outros"] else "📄 Contas",
+                                    "buyer": user,
+                                    "item": conta["nome"],
+                                    "description": "Conta fixa mensal",
+                                    "quantity": 1,
+                                    "total_value": conta["meu_valor"],
+                                    "payment_method": "Debito",
+                                    "installment": 0,
+                                    "createdAt": datetime.now(),
+                                    "pagamento_compartilhado": "👤 Pra mim",
+                                    "tem_pendencia": False,
+                                    "devedor": None,
+                                    "valor_pendente": None,
+                                    "status_pendencia": None,
+                                    "origem": "conta_fixa"
+                                })
+                                st.rerun()
+                        else:
+                            st.markdown('<span style="color: #4caf50; font-size: 14px;">Paga</span>', unsafe_allow_html=True)
+            else:
+                st.caption("Nenhuma conta fixa (fora do cartao)")
+        else:
+            st.caption("Nenhuma conta fixa cadastrada")
 
     # ========== METAS ==========
     elif menu == "🎯 Metas":
@@ -991,6 +1179,8 @@ def main():
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
             df_desp["mes_ano"] = df_desp["createdAt"].dt.to_period("M")
+            df_desp["dia_semana"] = df_desp["createdAt"].dt.dayofweek
+            df_desp["dia"] = df_desp["createdAt"].dt.day
 
             # Filtros
             meses = sorted(df_desp["mes_ano"].unique(), reverse=True)
@@ -998,6 +1188,9 @@ def main():
 
             df_mes = df_desp[df_desp["mes_ano"] == mes_selecionado]
             df_user = df_mes[df_mes["buyer"] == user]
+
+            # Filtra gastos reais (sem Cofrinho e Renda Variavel)
+            df_user_gastos = df_user[~df_user["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
 
             # Calcula totais de contas fixas do usuario
             user_fixas = 0
@@ -1007,56 +1200,268 @@ def main():
                 user_fixas += divididas / 2
 
             # Totais
-            total_var = df_user["total_value"].sum()
+            total_var = df_user_gastos["total_value"].sum()
             total_geral = total_var + user_fixas
 
-            st.markdown(f'<div class="{cor_card}"><h4>Total Geral</h4><h2>{fmt(total_geral)}</h2><small>variaveis + fixas</small></div>', unsafe_allow_html=True)
+            # ========== RESUMO DO MES ==========
+            st.markdown(f'''
+            <div style="background: linear-gradient(135deg, {'#c2185b' if user == 'Susanna' else '#0277bd'} 0%, {'#e91e63' if user == 'Susanna' else '#03a9f4'} 100%); padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 10px;">
+                <span style="font-size: 11px; color: rgba(255,255,255,0.8);">Total do Mes</span>
+                <h2 style="margin: 4px 0; font-size: 24px; color: white; font-weight: 600;">{fmt(total_geral)}</h2>
+                <span style="font-size: 10px; color: rgba(255,255,255,0.7);">Variaveis: {fmt(total_var)} | Fixas: {fmt(user_fixas)}</span>
+            </div>
+            ''', unsafe_allow_html=True)
 
+            # ========== METRICAS DE HABITOS ==========
+            if not df_user_gastos.empty:
+                # Calculos
+                dias_com_gasto = df_user_gastos["createdAt"].dt.date.nunique()
+                num_compras = len(df_user_gastos)
+                media_por_compra = total_var / num_compras if num_compras > 0 else 0
+
+                # Dias no mes
+                from calendar import monthrange
+                mes_py = mes_selecionado.to_timestamp()
+                dias_no_mes = monthrange(mes_py.year, mes_py.month)[1]
+                media_diaria = total_var / dias_no_mes
+
+                # Dia da semana que mais gasta
+                dias_semana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
+                gastos_por_dia = df_user_gastos.groupby("dia_semana")["total_value"].sum()
+                dia_mais_gasto = dias_semana[gastos_por_dia.idxmax()] if not gastos_por_dia.empty else "-"
+                valor_dia_mais = gastos_por_dia.max() if not gastos_por_dia.empty else 0
+
+                st.markdown("---")
+                st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">📈 Seus Habitos</p>', unsafe_allow_html=True)
+
+                # Cards de metricas
+                st.markdown(f'''
+                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%; margin-bottom: 8px;">
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 6px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #aaa;">Media/dia</span><br>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">{fmt(media_diaria)}</span>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 6px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #aaa;">Media/compra</span><br>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">{fmt(media_por_compra)}</span>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,255,255,0.05); padding: 6px; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 10px; color: #aaa;">Compras</span><br>
+                        <span style="font-size: 14px; color: white; font-weight: 600;">{num_compras}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                st.markdown(f'''
+                <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 8px;">
+                    <span style="font-size: 10px; color: #aaa;">Dia que mais gasta</span><br>
+                    <span style="font-size: 14px; color: white; font-weight: 600;">{dia_mais_gasto}</span>
+                    <span style="font-size: 11px; color: #888;"> ({fmt(valor_dia_mais)})</span>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # Grafico por dia da semana
+                st.markdown('<p style="font-size: 11px; text-align: center; margin: 8px 0 4px 0; color: #888;">Gastos por dia da semana</p>', unsafe_allow_html=True)
+                max_dia = gastos_por_dia.max() if not gastos_por_dia.empty else 1
+                for i, dia in enumerate(dias_semana):
+                    val = gastos_por_dia.get(i, 0)
+                    pct = (val / max_dia * 100) if max_dia > 0 else 0
+                    cor = '#e91e63' if user == 'Susanna' else '#03a9f4'
+                    st.markdown(f'''
+                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                        <span style="font-size: 10px; color: #888; width: 30px;">{dia}</span>
+                        <div style="flex: 1; background: rgba(255,255,255,0.1); border-radius: 3px; height: 6px; overflow: hidden; margin: 0 6px;">
+                            <div style="background: {cor}; width: {pct}%; height: 100%;"></div>
+                        </div>
+                        <span style="font-size: 9px; color: #aaa; width: 55px; text-align: right;">{fmt(val)}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+            # ========== COMPARATIVO COM MES ANTERIOR ==========
+            if len(meses) > 1:
+                idx_atual = list(meses).index(mes_selecionado)
+                if idx_atual < len(meses) - 1:
+                    mes_anterior = meses[idx_atual + 1]
+                    df_mes_ant = df_desp[(df_desp["mes_ano"] == mes_anterior) & (df_desp["buyer"] == user)]
+                    df_mes_ant_gastos = df_mes_ant[~df_mes_ant["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
+                    total_ant = df_mes_ant_gastos["total_value"].sum()
+
+                    if total_ant > 0:
+                        diff = total_var - total_ant
+                        diff_pct = (diff / total_ant) * 100
+
+                        cor_diff = "#4caf50" if diff < 0 else "#f44336"
+                        seta = "↓" if diff < 0 else "↑"
+                        texto = "menos" if diff < 0 else "mais"
+
+                        st.markdown("---")
+                        st.markdown(f'''
+                        <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center;">
+                            <span style="font-size: 10px; color: #aaa;">vs mes anterior</span><br>
+                            <span style="font-size: 16px; color: {cor_diff}; font-weight: 600;">{seta} {abs(diff_pct):.0f}% {texto}</span><br>
+                            <span style="font-size: 10px; color: #888;">{fmt(abs(diff))} de diferenca</span>
+                        </div>
+                        ''', unsafe_allow_html=True)
+
+            # ========== CONTROLE DE CARTAO ==========
             st.markdown("---")
+            st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">💳 Controle de Cartao</p>', unsafe_allow_html=True)
 
-            # Breakdown
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown(f'<div class="{cor_card}"><h4>Gastos Variaveis</h4><h2>{fmt(total_var)}</h2></div>', unsafe_allow_html=True)
-            with c2:
-                st.markdown(f'<div class="{cor_card}"><h4>Contas Fixas</h4><h2>{fmt(user_fixas)}</h2></div>', unsafe_allow_html=True)
+            # Gastos no credito do mes
+            credito_mes = df_user[df_user["payment_method"] == "Credito"]["total_value"].sum()
 
+            # Parcelas futuras (de meses anteriores)
+            df_user_todos = df_desp[df_desp["buyer"] == user]
+            df_parcelados = df_user_todos[(df_user_todos["payment_method"] == "Credito") & (df_user_todos["installment"] > 1)]
+
+            parcelas_a_vencer = 0
+            if not df_parcelados.empty:
+                hoje = date.today()
+                for _, compra in df_parcelados.iterrows():
+                    parcelas_total = compra["installment"]
+                    valor_parcela = compra["total_value"] / parcelas_total
+                    data_compra = compra["createdAt"].date()
+
+                    # Quantas parcelas ja passaram
+                    meses_passados = (hoje.year - data_compra.year) * 12 + (hoje.month - data_compra.month)
+                    parcelas_restantes = max(0, parcelas_total - meses_passados - 1)
+                    parcelas_a_vencer += valor_parcela * parcelas_restantes
+
+            # Previsao da fatura (credito do mes + parcelas de compras anteriores)
+            parcelas_este_mes = 0
+            parcelas_prox_mes = 0
+            if not df_parcelados.empty:
+                mes_atual = mes_selecionado.to_timestamp()
+                # Calcula proximo mes
+                if mes_atual.month == 12:
+                    prox_mes = date(mes_atual.year + 1, 1, 1)
+                else:
+                    prox_mes = date(mes_atual.year, mes_atual.month + 1, 1)
+
+                for _, compra in df_parcelados.iterrows():
+                    parcelas_total = compra["installment"]
+                    valor_parcela = compra["total_value"] / parcelas_total
+                    data_compra = compra["createdAt"]
+
+                    # Verifica se essa parcela cai neste mes
+                    meses_desde = (mes_atual.year - data_compra.year) * 12 + (mes_atual.month - data_compra.month)
+                    if 0 <= meses_desde < parcelas_total:
+                        parcelas_este_mes += valor_parcela
+
+                    # Verifica se cai no proximo mes
+                    meses_desde_prox = (prox_mes.year - data_compra.year) * 12 + (prox_mes.month - data_compra.month)
+                    if 0 <= meses_desde_prox < parcelas_total:
+                        parcelas_prox_mes += valor_parcela
+
+            # Compras a vista no credito
+            credito_avista = df_user[(df_user["payment_method"] == "Credito") & ((df_user["installment"] == 0) | (df_user["installment"] == 1))]["total_value"].sum()
+
+            # Contas fixas no cartao de credito
+            contas_fixas_credito = 0
+            if not df_contas_fixas.empty:
+                for _, conta in df_contas_fixas.iterrows():
+                    if conta.get("cartao_credito", False):
+                        if conta["responsavel"] == user:
+                            contas_fixas_credito += conta["valor"]
+                        elif conta["responsavel"] == "Dividido":
+                            contas_fixas_credito += conta["valor"] / 2
+
+            fatura_estimada = credito_avista + parcelas_este_mes + contas_fixas_credito
+            fatura_prox_mes = parcelas_prox_mes + contas_fixas_credito
+
+            st.markdown(f'''
+            <div style="display: flex; flex-direction: row; gap: 6px; width: 100%; margin-bottom: 8px;">
+                <div style="flex: 1; background: rgba(156,39,176,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                    <span style="font-size: 10px; color: #ce93d8;">Fatura estimada</span><br>
+                    <span style="font-size: 16px; color: white; font-weight: 600;">{fmt(fatura_estimada)}</span>
+                </div>
+                <div style="flex: 1; background: rgba(0,150,136,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                    <span style="font-size: 10px; color: #80cbc4;">Prox. mes</span><br>
+                    <span style="font-size: 16px; color: white; font-weight: 600;">{fmt(fatura_prox_mes)}</span>
+                </div>
+                <div style="flex: 1; background: rgba(255,152,0,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                    <span style="font-size: 10px; color: #ffcc80;">Compromisso</span><br>
+                    <span style="font-size: 16px; color: white; font-weight: 600;">{fmt(parcelas_a_vencer)}</span>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+
+            # Detalhes das parcelas
+            if not df_parcelados.empty:
+                compras_ativas = []
+                for _, compra in df_parcelados.iterrows():
+                    parcelas_total = compra["installment"]
+                    data_compra = compra["createdAt"].date()
+                    meses_passados = (date.today().year - data_compra.year) * 12 + (date.today().month - data_compra.month)
+                    parcela_atual = min(meses_passados + 1, parcelas_total)
+
+                    if parcela_atual <= parcelas_total:
+                        compras_ativas.append({
+                            "item": compra.get("item", "") or compra.get("label", ""),
+                            "valor_parcela": compra["total_value"] / parcelas_total,
+                            "parcela_atual": parcela_atual,
+                            "parcelas_total": parcelas_total
+                        })
+
+                if compras_ativas:
+                    with st.expander(f"📋 Parcelas ativas ({len(compras_ativas)})", expanded=False):
+                        for p in compras_ativas:
+                            st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">
+                                <span style="font-size: 12px; color: white;">{p["item"]}</span>
+                                <span style="font-size: 11px; color: #aaa; float: right;">{fmt(p["valor_parcela"])} ({p["parcela_atual"]}/{p["parcelas_total"]})</span>
+                            </div>''', unsafe_allow_html=True)
+
+            # ========== POR CATEGORIA ==========
             st.markdown("---")
+            st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">🏷️ Por Categoria</p>', unsafe_allow_html=True)
 
-            # Top 3 categorias
-            if not df_user.empty:
-                st.markdown('<p class="section-title">🏆 Top 3 Categorias</p>', unsafe_allow_html=True)
-                top_cat = df_user.groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
-                for i, (cat, val) in enumerate(top_cat.items(), 1):
-                    st.caption(f"{i}. {cat}: {fmt(val)}")
+            # Adiciona contas fixas de credito ao grafico
+            cat_data = df_user_gastos.groupby("label")["total_value"].sum() if not df_user_gastos.empty else pd.Series(dtype=float)
 
-            # Grafico por categoria
-            if not df_user.empty:
-                cat_data = df_user.groupby("label")["total_value"].sum().reset_index()
-                if not cat_data.empty:
-                    st.markdown('<p class="section-title">📊 Gastos por Categoria <br></p>', unsafe_allow_html=True)
-                    fig = px.pie(cat_data, names="label", values="total_value", hole=0.4, color_discrete_sequence=cores_user)
-                    fig.update_traces(textposition='inside', textinfo='percent')
-                    fig.update_layout(showlegend=True, margin=dict(t=0, b=0, l=0, r=0), height=130,
-                                     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                     font=dict(color='white', size=8), legend=dict(font=dict(size=7), orientation="h", y=-0.1))
-                    st.plotly_chart(fig, use_container_width=True)
+            # Soma contas fixas de credito por categoria
+            if not df_contas_fixas.empty:
+                for _, conta in df_contas_fixas.iterrows():
+                    if conta.get("cartao_credito", False):
+                        valor_meu = conta["valor"] if conta["responsavel"] == user else (conta["valor"] / 2 if conta["responsavel"] == "Dividido" else 0)
+                        if valor_meu > 0:
+                            cat_original = conta.get("categoria", "📄 Contas")
+                            # Mapeia categoria da conta fixa para categoria de despesa
+                            if "Saude" in str(cat_original) or "saude" in str(cat_original).lower():
+                                cat_label = "💊 Saude"
+                            elif cat_original in ["📄 Contas", "💊 Saude", "📦 Outros"]:
+                                cat_label = cat_original
+                            else:
+                                cat_label = "📄 Contas"
 
-            st.markdown("---")
+                            if cat_label in cat_data.index:
+                                cat_data[cat_label] += valor_meu
+                            else:
+                                cat_data[cat_label] = valor_meu
 
-            # Por forma de pagamento
-            st.markdown('<p class="section-title">💳 Por Forma de Pagamento</p>', unsafe_allow_html=True)
-            pgto = df_user.groupby("payment_method")["total_value"].sum().reset_index()
+            cat_data = cat_data.sort_values(ascending=False)
+            total_com_fixas = cat_data.sum() if not cat_data.empty else 0
 
-            if not pgto.empty:
-                fig = px.pie(pgto, names="payment_method", values="total_value", hole=0.4)
-                fig.update_traces(textposition='inside', textinfo='percent')
-                fig.update_layout(showlegend=True, margin=dict(t=0, b=0, l=0, r=0), height=120,
-                                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                 font=dict(color='white', size=8), legend=dict(font=dict(size=7), orientation="h", y=-0.1))
-                st.plotly_chart(fig, use_container_width=True)
+            if not cat_data.empty:
+                max_cat = cat_data.max()
 
-            # Contas fixas detalhadas
+                cores_distintas = ['#e91e63', '#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#ffeb3b', '#f44336']
+                for i, (cat, val) in enumerate(cat_data.items()):
+                    pct = (val / max_cat) * 100
+                    pct_total = (val / total_com_fixas * 100) if total_com_fixas > 0 else 0
+                    cor = cores_distintas[i % len(cores_distintas)]
+                    st.markdown(f'''
+                    <div style="margin-bottom: 6px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-bottom: 2px;">
+                            <span>{cat}</span>
+                            <span>{fmt(val)} ({pct_total:.0f}%)</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: {cor}; width: {pct}%; height: 100%; border-radius: 4px;"></div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+            # ========== CONTAS FIXAS ==========
             if not df_contas_fixas.empty:
                 contas_user = df_contas_fixas[
                     (df_contas_fixas["responsavel"] == user) |
@@ -1067,11 +1472,12 @@ def main():
                     st.markdown("---")
                     with st.expander("📋 Minhas Contas Fixas", expanded=False):
                         for _, conta in contas_user.iterrows():
-                            if conta["responsavel"] == "Dividido":
-                                valor_display = f"{fmt(conta['valor'])} ({fmt(conta['valor']/2)} cada)"
-                                st.caption(f"🔷 **{conta['nome']}** | {conta['categoria']} | {valor_display} | Vence dia {int(conta['dia_vencimento'])}")
-                            else:
-                                st.caption(f"🔸 **{conta['nome']}** | {conta['categoria']} | {fmt(conta['valor'])} | Vence dia {int(conta['dia_vencimento'])}")
+                            valor_meu = conta['valor'] / 2 if conta["responsavel"] == "Dividido" else conta['valor']
+                            tipo = "🔷" if conta["responsavel"] == "Dividido" else "🔸"
+                            st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">
+                                <span style="font-size: 12px; color: white;">{tipo} {conta['nome']}</span>
+                                <span style="font-size: 11px; color: #aaa; float: right;">{fmt(valor_meu)} | Dia {int(conta['dia_vencimento'])}</span>
+                            </div>''', unsafe_allow_html=True)
         else:
             st.info("📝 Nenhum gasto registrado.")
 
