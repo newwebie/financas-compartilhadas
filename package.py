@@ -426,13 +426,13 @@ def main():
                     borda_divida = "#f48fb1" if user == "Susanna" else "#4fc3f7"
                     st.markdown(f'''
                     <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
-                        <div style="flex: 1; background: {cor_divida_outra}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
-                            <h4 style="margin: 0; font-size: 14px; opacity: 0.9;">Devo pra {outro}</h4>
-                            <h2 style="margin: 0; font-size: 12px; font-weight: 600;">{fmt(abs(saldo))}</h2>
+                        <div style="flex: 1; background: {cor_divida_outra}; padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
+                            <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">Devo pra {outro}</h4>
+                            <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(abs(saldo))}</h2>
                         </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
-                            <h4 style="margin: 0; font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</h4>
-                            <h2 style="margin: 0; font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</h2>
+                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
+                            <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💸 Devo (terceiros)</h4>
+                            <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(total_dividas)}</h2>
                         </div>
                     </div>
                     ''', unsafe_allow_html=True)
@@ -442,9 +442,9 @@ def main():
                 elif abs(saldo) < 0.01 and total_dividas > 0:
                     # Só devo a terceiros
                     st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
-                        <h4 style="margin: 0; font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</h4>
-                        <h2 style="margin: 0; font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</h2>
+                    <div style="background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
+                        <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💸 Devo (terceiros)</h4>
+                        <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(total_dividas)}</h2>
                     </div>
                     ''', unsafe_allow_html=True)
         else:
@@ -1053,7 +1053,7 @@ def main():
             if not df_user.empty:
                 cat_data = df_user.groupby("label")["total_value"].sum().reset_index()
                 if not cat_data.empty:
-                    st.markdown('<p class="section-title">📊 Gastos por Categoria</p>', unsafe_allow_html=True)
+                    st.markdown('<p class="section-title">📊 Gastos por Categoria <br></p>', unsafe_allow_html=True)
                     fig = px.pie(cat_data, names="label", values="total_value", hole=0.4, color_discrete_sequence=cores_user)
                     fig.update_traces(textposition='inside', textinfo='percent')
                     fig.update_layout(showlegend=True, margin=dict(t=0, b=0, l=0, r=0), height=130,
