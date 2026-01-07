@@ -321,15 +321,15 @@ def main():
 
             st.markdown(f'''
             <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
-                <div style="flex: 1; background: {cor_gastos}; padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_gastos};">
+                <div style="flex: 1; background: {cor_gastos}; padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_gastos};">
                     <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💸 Gastos</h4>
                     <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(gastos_reais)}</h2>
                 </div>
-                <div style="flex: 1; background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
+                <div style="flex: 1; background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
                     <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">🐷 Cofrinho</h4>
                     <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(cofrinho)}</h2>
                 </div>
-                <div style="flex: 1; background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #ffcc80;">
+                <div style="flex: 1; background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid #ffcc80;">
                     <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💵 Extra</h4>
                     <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(renda_variavel)}</h2>
                 </div>
@@ -410,11 +410,11 @@ def main():
                     # Outra me deve + eu devo a terceiros
                     st.markdown(f'''
                     <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
-                        <div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
+                        <div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
                             <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">🤑 {outro} te deve</h4>
                             <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(saldo)}</h2>
                         </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
+                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
                             <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💸 Devo (terceiros)</h4>
                             <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(total_dividas)}</h2>
                         </div>
@@ -426,11 +426,11 @@ def main():
                     borda_divida = "#f48fb1" if user == "Susanna" else "#4fc3f7"
                     st.markdown(f'''
                     <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
-                        <div style="flex: 1; background: {cor_divida_outra}; padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
+                        <div style="flex: 1; background: {cor_divida_outra}; padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
                             <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">Devo pra {outro}</h4>
                             <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(abs(saldo))}</h2>
                         </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
+                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
                             <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💸 Devo (terceiros)</h4>
                             <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(total_dividas)}</h2>
                         </div>
@@ -442,7 +442,7 @@ def main():
                 elif abs(saldo) < 0.01 and total_dividas > 0:
                     # Só devo a terceiros
                     st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 3px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
+                    <div style="background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 1px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
                         <h4 style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.2;">💸 Devo (terceiros)</h4>
                         <h2 style="margin: 0; font-size: 12px; font-weight: 600; line-height: 1.2;">{fmt(total_dividas)}</h2>
                     </div>
