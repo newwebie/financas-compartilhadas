@@ -481,21 +481,29 @@ def main():
 
         if not df.empty:
             df["createdAt"] = pd.to_datetime(df["createdAt"])
-            hoje = date.today()
-            mes_atual = df[(df["createdAt"].dt.month == hoje.month) & (df["createdAt"].dt.year == hoje.year)]
-            meus_registros = mes_atual[mes_atual["buyer"] == user]
+
+            # Periodo baseado no fechamento da fatura
+            data_inicio, data_fim = get_periodo_fatura(colls, user)
+
+            # Filtra registros do periodo da fatura
+            meus_registros = df[
+                (df["buyer"] == user) &
+                (df["createdAt"].dt.date >= data_inicio) &
+                (df["createdAt"].dt.date <= data_fim)
+            ]
+
+            # Mostra periodo
+            st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Fatura: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
 
             # === DASHBOARD - 3 CARDS ===
-            st.markdown('<p class="section-title"></p>', unsafe_allow_html=True)
-
             # Card 1: Gastos (tudo menos Cofrinho e Renda Variavel)
-            gastos_reais = meus_registros[~meus_registros["label"].str.contains("Cofrinho|Renda Variavel", na=False)]["total_value"].sum()
+            gastos_reais = meus_registros[~meus_registros["label"].str.contains("Cofrinho|Renda Variavel", na=False)]["total_value"].sum() if not meus_registros.empty else 0
 
             # Card 2: Cofrinho
-            cofrinho = meus_registros[meus_registros["label"].str.contains("Cofrinho", na=False)]["total_value"].sum()
+            cofrinho = meus_registros[meus_registros["label"].str.contains("Cofrinho", na=False)]["total_value"].sum() if not meus_registros.empty else 0
 
             # Card 3: Renda Variavel
-            renda_variavel = meus_registros[meus_registros["label"].str.contains("Renda Variavel", na=False)]["total_value"].sum()
+            renda_variavel = meus_registros[meus_registros["label"].str.contains("Renda Variavel", na=False)]["total_value"].sum() if not meus_registros.empty else 0
 
             # Exibir os 3 cards com flexbox (garante lado a lado em mobile)
             cor_gastos = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
@@ -529,27 +537,30 @@ def main():
             gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)]
             user_cat_series = gastos_para_grafico.groupby("label")["total_value"].sum() if not gastos_para_grafico.empty else pd.Series(dtype=float)
 
-            # Calcula parcelamentos que caem neste mes (de meses anteriores)
+            # Calcula parcelamentos que caem no periodo da fatura
             total_parcelamentos = 0
-            df_todos = pd.DataFrame(carregar_despesas(colls))
-            if not df_todos.empty:
-                df_todos["createdAt"] = pd.to_datetime(df_todos["createdAt"])
-                df_parcelados = df_todos[
-                    (df_todos["buyer"] == user) &
-                    (df_todos["installment"].notna()) &
-                    (df_todos["installment"] > 0)
-                ]
+            df_parcelados = df[
+                (df["buyer"] == user) &
+                (df["installment"].notna()) &
+                (df["installment"] > 0)
+            ]
+            if not df_parcelados.empty:
                 for _, parc in df_parcelados.iterrows():
-                    data_compra = parc["createdAt"]
+                    data_compra = parc["createdAt"].date()
                     num_parcelas = int(parc["installment"])
                     valor_parcela = parc["total_value"] / num_parcelas
-                    # Verifica se alguma parcela cai no mes atual
+                    # Verifica se alguma parcela cai no periodo da fatura
                     for p in range(num_parcelas):
-                        # Parcela p cai no mes (data_compra + p meses)
+                        # Calcula data aproximada da parcela (mes da compra + p meses)
                         mes_parcela = data_compra.month + p
                         ano_parcela = data_compra.year + (mes_parcela - 1) // 12
                         mes_parcela = ((mes_parcela - 1) % 12) + 1
-                        if mes_parcela == hoje.month and ano_parcela == hoje.year:
+                        # Usa dia 15 como referencia para o mes da parcela
+                        try:
+                            data_parcela = date(ano_parcela, mes_parcela, 15)
+                        except:
+                            continue
+                        if data_inicio <= data_parcela <= data_fim:
                             total_parcelamentos += valor_parcela
 
             # Adiciona parcelamentos como categoria se houver
@@ -1179,59 +1190,6 @@ def main():
         else:
             st.caption("Nenhuma conta fixa cadastrada")
 
-        # ========== GASTOS DO MES (DETALHADO) ==========
-        st.markdown("---")
-        st.markdown('<p class="section-title">📋 Gastos do Mes</p>', unsafe_allow_html=True)
-
-        df_gastos_mes = pd.DataFrame(carregar_despesas(colls))
-        if not df_gastos_mes.empty:
-            df_gastos_mes["createdAt"] = pd.to_datetime(df_gastos_mes["createdAt"])
-
-            # Determina periodo baseado no fechamento da fatura
-            data_inicio, data_fim = get_periodo_fatura(colls, user)
-
-            st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Periodo: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
-
-            # Filtra gastos do usuario no periodo
-            df_meus_gastos = df_gastos_mes[
-                (df_gastos_mes["buyer"] == user) &
-                (df_gastos_mes["createdAt"].dt.date >= data_inicio) &
-                (df_gastos_mes["createdAt"].dt.date <= data_fim)
-            ]
-
-            # Exclui Cofrinho e Renda Variavel
-            df_meus_gastos = df_meus_gastos[~df_meus_gastos["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
-
-            if not df_meus_gastos.empty:
-                total_gastos = df_meus_gastos["total_value"].sum()
-                st.markdown(f'''
-                <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 10px;">
-                    <span style="font-size: 12px; color: #aaa;">Total no periodo</span><br>
-                    <span style="font-size: 18px; color: white; font-weight: 600;">{fmt(total_gastos)}</span>
-                </div>
-                ''', unsafe_allow_html=True)
-
-                # Ordena por data decrescente
-                df_meus_gastos = df_meus_gastos.sort_values("createdAt", ascending=False)
-
-                with st.expander(f"📝 Ver detalhes ({len(df_meus_gastos)} itens)", expanded=False):
-                    for _, gasto in df_meus_gastos.iterrows():
-                        data_str = gasto["createdAt"].strftime("%d/%m")
-                        item = gasto.get("item", "-")
-                        categoria = gasto.get("label", "-")
-                        valor = gasto["total_value"]
-                        pagamento = gasto.get("payment_method", "-")
-
-                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {'#e91e63' if user == 'Susanna' else '#03a9f4'}; overflow: hidden;">
-                            <div style="font-size: 12px; color: white; word-break: break-word;">{item}</div>
-                            <div style="font-size: 11px; color: #aaa;">{categoria} | {pagamento} | {data_str}</div>
-                            <div style="font-size: 13px; color: white; font-weight: 600;">{fmt(valor)}</div>
-                        </div>''', unsafe_allow_html=True)
-            else:
-                st.caption("Nenhum gasto no periodo")
-        else:
-            st.caption("Nenhum gasto registrado")
-
     # ========== METAS ==========
     elif menu == "🎯 Metas":
         st.markdown('<p class="page-title">🎯 Minhas Metas</p>', unsafe_allow_html=True)
@@ -1254,15 +1212,23 @@ def main():
 
         if not df_metas.empty and not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
-            hoje = date.today()
-            df_mes = df_desp[(df_desp["createdAt"].dt.month == hoje.month) & (df_desp["buyer"] == user)]
 
+            # Periodo baseado no fechamento da fatura
+            data_inicio, data_fim = get_periodo_fatura(colls, user)
+
+            df_mes = df_desp[
+                (df_desp["buyer"] == user) &
+                (df_desp["createdAt"].dt.date >= data_inicio) &
+                (df_desp["createdAt"].dt.date <= data_fim)
+            ]
+
+            st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Fatura: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
             st.markdown('<p class="section-title">📊 Meu Progresso</p>', unsafe_allow_html=True)
 
             for _, meta in df_metas.iterrows():
                 cat, limite = meta["categoria"], meta["limite"]
 
-                gasto = df_mes["total_value"].sum() if "Total" in cat else df_mes[df_mes["label"] == cat]["total_value"].sum()
+                gasto = df_mes["total_value"].sum() if "Total" in cat else (df_mes[df_mes["label"] == cat]["total_value"].sum() if not df_mes.empty else 0)
 
                 pct = min((gasto / limite) * 100, 100) if limite > 0 else 0
                 restante = max(limite - gasto, 0)
@@ -1678,6 +1644,8 @@ def main():
                     </div>
                     ''', unsafe_allow_html=True)
 
+            st.markdown("---")
+
             # ========== CONTAS FIXAS ==========
             if not df_contas_fixas.empty:
                 contas_user = df_contas_fixas[
@@ -1686,15 +1654,43 @@ def main():
                 ]
 
                 if not contas_user.empty:
-                    st.markdown("---")
                     with st.expander("📋 Minhas Contas Fixas", expanded=False):
                         for _, conta in contas_user.iterrows():
                             valor_meu = conta['valor'] / 2 if conta["responsavel"] == "Dividido" else conta['valor']
                             tipo = "🔷" if conta["responsavel"] == "Dividido" else "🔸"
-                            st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">
-                                <span style="font-size: 12px; color: white;">{tipo} {conta['nome']}</span>
-                                <span style="font-size: 11px; color: #aaa; float: right;">{fmt(valor_meu)} | Dia {int(conta['dia_vencimento'])}</span>
+                            st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; overflow: hidden;">
+                                <div style="font-size: 12px; color: white;">{tipo} {conta['nome']}</div>
+                                <div style="font-size: 11px; color: #aaa;">{fmt(valor_meu)} | Dia {int(conta['dia_vencimento'])}</div>
                             </div>''', unsafe_allow_html=True)
+            
+
+            # ========== MEUS GASTOS (PERIODO DA FATURA) ==========
+            data_inicio, data_fim = get_periodo_fatura(colls, user)
+
+            df_meus_gastos = df_desp[
+                (df_desp["buyer"] == user) &
+                (df_desp["createdAt"].dt.date >= data_inicio) &
+                (df_desp["createdAt"].dt.date <= data_fim)
+            ]
+            df_meus_gastos = df_meus_gastos[~df_meus_gastos["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
+
+            with st.expander(f"💸 Meus Gastos ", expanded=False):
+                if not df_meus_gastos.empty:
+                    df_meus_gastos = df_meus_gastos.sort_values("createdAt", ascending=False)
+                    for _, gasto in df_meus_gastos.iterrows():
+                        data_str = gasto["createdAt"].strftime("%d/%m")
+                        item = gasto.get("item", "-")
+                        categoria = gasto.get("label", "-")
+                        valor = gasto["total_value"]
+                        pagamento = gasto.get("payment_method", "-")
+
+                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {'#e91e63' if user == 'Susanna' else '#03a9f4'}; overflow: hidden;">
+                            <div style="font-size: 12px; color: white; word-break: break-word;">{item}</div>
+                            <div style="font-size: 11px; color: #aaa;">{categoria} | {pagamento} | {data_str}</div>
+                            <div style="font-size: 13px; color: white; font-weight: 600;">{fmt(valor)}</div>
+                        </div>''', unsafe_allow_html=True)
+                else:
+                    st.caption("Nenhum gasto no periodo")
         else:
             st.info("📝 Nenhum gasto registrado.")
 
