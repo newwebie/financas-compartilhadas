@@ -605,6 +605,16 @@ def main():
                             else:
                                 user_cat_series[cat_label] = valor_meu
 
+            # Adiciona emprestimos a terceiros (em aberto) como categoria
+            df_emprestimos_terceiros = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+            if not df_emprestimos_terceiros.empty:
+                total_emprestei = df_emprestimos_terceiros["valor"].sum()
+                if total_emprestei > 0:
+                    if "🤝 Emprestei" in user_cat_series.index:
+                        user_cat_series["🤝 Emprestei"] += total_emprestei
+                    else:
+                        user_cat_series["🤝 Emprestei"] = total_emprestei
+
             user_cat = user_cat_series.reset_index()
             user_cat.columns = ["label", "total_value"]
             user_cat = user_cat.sort_values("total_value", ascending=False)
@@ -653,59 +663,68 @@ def main():
 
             saldo = outro_deve - user_deve
 
-            # Busca dividas a terceiros
+            # Busca dividas a terceiros (separando emprestimos pessoais)
             df_dividas_terceiros = pd.DataFrame(carregar_dividas_terceiros(colls, user))
-            total_dividas = df_dividas_terceiros["valor"].sum() if not df_dividas_terceiros.empty else 0
+            if not df_dividas_terceiros.empty:
+                # Dividas de terceiros (pessoas)
+                df_dividas_pessoas = df_dividas_terceiros[df_dividas_terceiros.get("emprestimo_conta", pd.Series([False] * len(df_dividas_terceiros))).fillna(False) == False]
+                total_dividas = df_dividas_pessoas["valor"].sum() if not df_dividas_pessoas.empty else 0
+                # Emprestimos pessoais (contas proprias)
+                df_emp_pessoal = df_dividas_terceiros[df_dividas_terceiros.get("emprestimo_conta", pd.Series([False] * len(df_dividas_terceiros))).fillna(False) == True]
+                total_emp_pessoal = df_emp_pessoal["valor"].sum() if not df_emp_pessoal.empty else 0
+            else:
+                total_dividas = 0
+                total_emp_pessoal = 0
 
             # Saldo
-            if abs(saldo) < 0.01 and total_dividas == 0:
+            tem_alguma_divida = abs(saldo) >= 0.01 or total_dividas > 0 or total_emp_pessoal > 0
+            if not tem_alguma_divida:
                 st.markdown('<div class="ok-box"><h3 style="font-size: 12px;">✨ Quites!</h3></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<p class="section-title" style="font-size: 14px;">💫 Situacao</p>', unsafe_allow_html=True)
 
-                # Card unico se só tem um tipo de divida, ou dois cards lado a lado
-                if saldo > 0 and total_dividas == 0:
-                    # Só a outra me deve
-                    st.markdown(f'<div class="ok-box"><h3 style="font-size: 12px;">🤑 {outro} te deve {fmt(saldo)}</h3></div>', unsafe_allow_html=True)
-                elif saldo > 0 and total_dividas > 0:
-                    # Outra me deve + eu devo a terceiros
-                    st.markdown(f'''
-                    <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
+                # Monta cards dinamicamente
+                cards_html = []
+
+                # Card saldo com a outra pessoa
+                if saldo > 0:
+                    cards_html.append(f'''
                         <div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
                             <span style="font-size: 14px; opacity: 0.9;">🤑 {outro} te deve</span><br>
                             <span style="font-size: 12px; font-weight: 600;">{fmt(saldo)}</span>
-                        </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
-                            <span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br>
-                            <span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span>
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
-                elif saldo <= 0 and total_dividas > 0:
-                    # Eu devo pra outra + eu devo a terceiros
+                        </div>''')
+                elif saldo < 0:
                     cor_divida_outra = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
                     borda_divida = "#f48fb1" if user == "Susanna" else "#4fc3f7"
-                    st.markdown(f'''
-                    <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
+                    cards_html.append(f'''
                         <div style="flex: 1; background: {cor_divida_outra}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
                             <span style="font-size: 14px; opacity: 0.9;">Devo pra {outro}</span><br>
                             <span style="font-size: 12px; font-weight: 600;">{fmt(abs(saldo))}</span>
-                        </div>
+                        </div>''')
+
+                # Card dividas a terceiros
+                if total_dividas > 0:
+                    cards_html.append(f'''
                         <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
                             <span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br>
                             <span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span>
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
-                elif saldo <= 0 and total_dividas == 0:
-                    # Só eu devo pra outra
-                    st.markdown(f'<div class="{cor_card}"><h4 style="font-size: 14px;">Voce deve pra {outro}</h4><h2 style="font-size: 12px;">{fmt(abs(saldo))}</h2></div>', unsafe_allow_html=True)
-                elif abs(saldo) < 0.01 and total_dividas > 0:
-                    # Só devo a terceiros
+                        </div>''')
+
+                # Card emprestimos pessoais
+                if total_emp_pessoal > 0:
+                    cards_html.append(f'''
+                        <div style="flex: 1; background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #bcaaa4;">
+                            <span style="font-size: 14px; opacity: 0.9;">🏦 Emp. Pessoal</span><br>
+                            <span style="font-size: 12px; font-weight: 600;">{fmt(total_emp_pessoal)}</span>
+                        </div>''')
+
+                # Renderiza cards
+                if len(cards_html) == 1:
+                    st.markdown(cards_html[0], unsafe_allow_html=True)
+                else:
                     st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
-                        <span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br>
-                        <span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span>
+                    <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
+                        {"".join(cards_html)}
                     </div>
                     ''', unsafe_allow_html=True)
         else:
@@ -820,6 +839,7 @@ def main():
                 valor_divida = st.number_input("💵 Valor", min_value=0.01, value=10.00, format="%.2f", key="valor_divida_terceiro")
                 desc_divida = st.text_input("📝 Descricao", placeholder="Do que se trata", key="desc_divida")
                 data_pagamento = st.date_input("📅 Previsao de pagamento", value=date.today() + timedelta(days=30), format="DD/MM/YYYY", key="data_pagamento")
+                emprestimo_conta = st.checkbox("🏦 Emprestimo da minha conta", value=False, help="Marque se e um emprestimo de uma conta pessoal sua (ex: poupanca, reserva)")
 
                 divida_submitted = st.form_submit_button("✅ Registrar", use_container_width=True)
 
@@ -831,7 +851,8 @@ def main():
                     "descricao": desc_divida,
                     "data_emprestimo": datetime.now(),
                     "data_pagamento": datetime.combine(data_pagamento, datetime.min.time()),
-                    "status": "em aberto"
+                    "status": "em aberto",
+                    "emprestimo_conta": emprestimo_conta
                 })
                 limpar_cache_dados()
                 st.success(f"✅ Divida de {fmt(valor_divida)} com {pessoa_credor} registrada!")
@@ -1073,34 +1094,64 @@ def main():
         df_dividas = pd.DataFrame(carregar_dividas_terceiros(colls, user))
 
         if not df_dividas.empty:
+            # Separa dividas normais e emprestimos pessoais
+            df_dividas_pessoas = df_dividas[df_dividas.get("emprestimo_conta", pd.Series([False] * len(df_dividas))).fillna(False) == False]
+            df_emp_pessoal = df_dividas[df_dividas.get("emprestimo_conta", pd.Series([False] * len(df_dividas))).fillna(False) == True]
+
             total_dividas = df_dividas["valor"].sum()
             st.markdown(f'<div style="background: rgba(244,67,54,0.2); padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 12px; color: #ef9a9a;">Total que devo</span><br><span style="font-size: 18px; color: white; font-weight: 600;">{fmt(total_dividas)}</span></div>', unsafe_allow_html=True)
 
-            for i, (_, div) in enumerate(df_dividas.iterrows()):
-                data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
-                data_pag = div["data_pagamento"].strftime("%d/%m") if pd.notna(div.get("data_pagamento")) else ""
+            # Primeiro mostra dividas a terceiros (pessoas)
+            if not df_dividas_pessoas.empty:
+                st.caption("👥 Terceiros")
+                for i, (_, div) in enumerate(df_dividas_pessoas.iterrows()):
+                    data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
+                    data_pag = div["data_pagamento"].strftime("%d/%m") if pd.notna(div.get("data_pagamento")) else ""
 
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336; overflow: hidden;">
-                        <div style="font-size: 14px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</div>
-                        <div style="font-size: 12px; color: #aaa; word-break: break-word;">{div.get("descricao", "-")}</div>
-                        <div style="font-size: 14px; color: white;">{fmt(div["valor"])} <span style="font-size: 10px; color: #888;">| {data_emp} - {data_pag}</span></div>
-                    </div>''', unsafe_allow_html=True)
-                with col2:
-                    if st.button("✅", key=f"quitar_divida_{i}", help="Paguei"):
-                        colls["dividas_terceiros"].update_one(
-                            {"_id": div["_id"]},
-                            {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
-                        )
-                        limpar_cache_dados()
-                        st.rerun()
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336; overflow: hidden;">
+                            <div style="font-size: 14px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</div>
+                            <div style="font-size: 12px; color: #aaa; word-break: break-word;">{div.get("descricao", "-")}</div>
+                            <div style="font-size: 14px; color: white;">{fmt(div["valor"])} <span style="font-size: 10px; color: #888;">| {data_emp} - {data_pag}</span></div>
+                        </div>''', unsafe_allow_html=True)
+                    with col2:
+                        if st.button("✅", key=f"quitar_divida_{i}", help="Paguei"):
+                            colls["dividas_terceiros"].update_one(
+                                {"_id": div["_id"]},
+                                {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
+                            )
+                            limpar_cache_dados()
+                            st.rerun()
+
+            # Depois mostra emprestimos pessoais (contas)
+            if not df_emp_pessoal.empty:
+                st.caption("🏦 Emprestimos Pessoais")
+                for i, (_, div) in enumerate(df_emp_pessoal.iterrows()):
+                    data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
+                    data_pag = div["data_pagamento"].strftime("%d/%m") if pd.notna(div.get("data_pagamento")) else ""
+
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #8d6e63; overflow: hidden;">
+                            <div style="font-size: 14px; color: #bcaaa4; font-weight: 600;">{div["credor"]}</div>
+                            <div style="font-size: 12px; color: #aaa; word-break: break-word;">{div.get("descricao", "-")}</div>
+                            <div style="font-size: 14px; color: white;">{fmt(div["valor"])} <span style="font-size: 10px; color: #888;">| {data_emp} - {data_pag}</span></div>
+                        </div>''', unsafe_allow_html=True)
+                    with col2:
+                        if st.button("✅", key=f"quitar_emp_pessoal_{i}", help="Devolvi"):
+                            colls["dividas_terceiros"].update_one(
+                                {"_id": div["_id"]},
+                                {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
+                            )
+                            limpar_cache_dados()
+                            st.rerun()
         else:
-            st.caption("Nenhuma divida a terceiros")
+            st.caption("Nenhuma divida")
 
         # ========== CONTAS FIXAS (NAO CREDITO) ==========
         st.markdown("---")
-        st.markdown('<p class="section-title">📋 Contas Fixas do Mes</p>', unsafe_allow_html=True)
+        st.markdown('<p class="section-title">📋 Contas Fixas do Mes - Pgto Manual</p>', unsafe_allow_html=True)
 
         df_contas_fixas = pd.DataFrame(carregar_contas_fixas(colls))
         hoje = date.today()
