@@ -461,7 +461,7 @@ def main():
         if "menu_selecionado" not in st.session_state:
             st.session_state.menu_selecionado = "🏠 Inicio"
 
-        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao", "⚙️ Config"]
+        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "📊 Relatorio", "⛽", "🎯 Metas", "👯 Ambas", "📈 Evolucao", "⚙️ Config"]
 
         for opcao in menu_opcoes:
             tipo_btn = "primary" if st.session_state.menu_selecionado == opcao else "secondary"
@@ -541,7 +541,6 @@ def main():
             </div>
             ''', unsafe_allow_html=True)
 
-            st.markdown("")
             st.markdown("")
             st.markdown("")
 
@@ -652,7 +651,8 @@ def main():
 
             st.markdown("---")
 
-            # Minhas pendencias
+            # ========== SITUACAO FINANCEIRA ==========
+            # Calcula pendencias entre usuarios
             user_deve = df[(df["devedor"] == user) & (df["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
             outro_deve = df[(df["devedor"] == outro) & (df["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
 
@@ -666,69 +666,47 @@ def main():
             # Busca dividas a terceiros (separando emprestimos pessoais)
             df_dividas_terceiros = pd.DataFrame(carregar_dividas_terceiros(colls, user))
             if not df_dividas_terceiros.empty:
-                # Garante que a coluna existe
                 if "emprestimo_conta" not in df_dividas_terceiros.columns:
                     df_dividas_terceiros["emprestimo_conta"] = False
                 df_dividas_terceiros["emprestimo_conta"] = df_dividas_terceiros["emprestimo_conta"].fillna(False)
 
-                # Dividas de terceiros (pessoas)
                 df_dividas_pessoas = df_dividas_terceiros[df_dividas_terceiros["emprestimo_conta"] == False]
                 total_dividas = df_dividas_pessoas["valor"].sum() if not df_dividas_pessoas.empty else 0
-                # Emprestimos pessoais (contas proprias)
                 df_emp_pessoal = df_dividas_terceiros[df_dividas_terceiros["emprestimo_conta"] == True]
                 total_emp_pessoal = df_emp_pessoal["valor"].sum() if not df_emp_pessoal.empty else 0
             else:
                 total_dividas = 0
                 total_emp_pessoal = 0
 
-            # Saldo
+            # Mostra situacao se houver algo
             tem_alguma_divida = abs(saldo) >= 0.01 or total_dividas > 0 or total_emp_pessoal > 0
-            if not tem_alguma_divida:
-                st.markdown('<div class="ok-box"><h3 style="font-size: 12px;">✨ Quites!</h3></div>', unsafe_allow_html=True)
-            else:
+            if tem_alguma_divida:
+                st.markdown("")
                 st.markdown('<p class="section-title" style="font-size: 14px;">💫 Situacao</p>', unsafe_allow_html=True)
 
-                # Monta cards
-                cor_divida_outra = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
-                borda_divida = "#f48fb1" if user == "Susanna" else "#4fc3f7"
+                cor_user = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
+                borda_user = "#f48fb1" if user == "Susanna" else "#4fc3f7"
+
+                # Monta lista de cards
+                cards_situacao = []
 
                 # Card saldo com a outra pessoa
-                card_saldo = ""
                 if saldo > 0:
-                    card_saldo = f'''<div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
-                        <span style="font-size: 14px; opacity: 0.9;">🤑 {outro} te deve</span><br>
-                        <span style="font-size: 12px; font-weight: 600;">{fmt(saldo)}</span>
-                    </div>'''
+                    cards_situacao.append(f'<div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;"><span style="font-size: 14px; opacity: 0.9;">🤑 {outro} te deve</span><br><span style="font-size: 12px; font-weight: 600;">{fmt(saldo)}</span></div>')
                 elif saldo < 0:
-                    card_saldo = f'''<div style="flex: 1; background: {cor_divida_outra}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
-                        <span style="font-size: 14px; opacity: 0.9;">Devo pra {outro}</span><br>
-                        <span style="font-size: 12px; font-weight: 600;">{fmt(abs(saldo))}</span>
-                    </div>'''
+                    cards_situacao.append(f'<div style="flex: 1; background: {cor_user}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_user};"><span style="font-size: 14px; opacity: 0.9;">Devo pra {outro}</span><br><span style="font-size: 12px; font-weight: 600;">{fmt(abs(saldo))}</span></div>')
 
                 # Card dividas a terceiros
-                card_terceiros = ""
                 if total_dividas > 0:
-                    card_terceiros = f'''<div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
-                        <span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br>
-                        <span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span>
-                    </div>'''
+                    cards_situacao.append(f'<div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;"><span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br><span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span></div>')
 
                 # Card emprestimos pessoais
-                card_emp_pessoal = ""
                 if total_emp_pessoal > 0:
-                    card_emp_pessoal = f'''<div style="flex: 1; background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #bcaaa4;">
-                        <span style="font-size: 14px; opacity: 0.9;">🏦 Emp. Pessoal</span><br>
-                        <span style="font-size: 12px; font-weight: 600;">{fmt(total_emp_pessoal)}</span>
-                    </div>'''
+                    cards_situacao.append(f'<div style="flex: 1; background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #bcaaa4;"><span style="font-size: 14px; opacity: 0.9;">🏦 Emp. Pessoal</span><br><span style="font-size: 12px; font-weight: 600;">{fmt(total_emp_pessoal)}</span></div>')
 
-                # Renderiza cards
-                st.markdown(f'''
-                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
-                    {card_saldo}
-                    {card_terceiros}
-                    {card_emp_pessoal}
-                </div>
-                ''', unsafe_allow_html=True)
+                if cards_situacao:
+                    html_cards = "".join(cards_situacao)
+                    st.markdown(f'<div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">{html_cards}</div>', unsafe_allow_html=True)
         else:
             st.info("📝 Sem registros ainda. Va em '➕ Novo'!")
 
@@ -757,6 +735,65 @@ def main():
             st.rerun()
 
         st.markdown("")
+
+        # ===== ABASTECIMENTO RAPIDO =====
+        st.markdown('<p style="font-size: 12px; color: #888; margin-bottom: 4px;">⛽ Abastecimento rapido</p>', unsafe_allow_html=True)
+
+        with st.expander("🏍️ Moto", expanded=False):
+            with st.form("form_moto", clear_on_submit=True):
+                valor_moto = st.number_input("💵 Valor", min_value=0.01, value=30.00, format="%.2f", key="valor_moto")
+                pagamento_moto = st.selectbox("💳 Pagamento", ["Debito", "Credito", "Pix", "Dinheiro"], key="pag_moto")
+                moto_submitted = st.form_submit_button("✅ Registrar", use_container_width=True)
+
+            if moto_submitted:
+                colls["despesas"].insert_one({
+                    "label": "⛽ Combustivel",
+                    "buyer": user,
+                    "item": "Moto",
+                    "description": "",
+                    "quantity": 1,
+                    "total_value": valor_moto,
+                    "payment_method": pagamento_moto,
+                    "installment": 0,
+                    "createdAt": datetime.now(),
+                    "pagamento_compartilhado": "👤 Pra mim",
+                    "tem_pendencia": False,
+                    "devedor": None,
+                    "valor_pendente": None,
+                    "status_pendencia": None
+                })
+                limpar_cache_dados()
+                st.success(f"✅ Abastecimento moto {fmt(valor_moto)} registrado!")
+                st.balloons()
+
+        with st.expander("🚗 Carro", expanded=False):
+            with st.form("form_carro", clear_on_submit=True):
+                valor_carro = st.number_input("💵 Valor", min_value=0.01, value=60.00, format="%.2f", key="valor_carro")
+                pagamento_carro = st.selectbox("💳 Pagamento", ["Debito", "Credito", "Pix", "Dinheiro"], key="pag_carro")
+                carro_submitted = st.form_submit_button("✅ Registrar", use_container_width=True)
+
+            if carro_submitted:
+                colls["despesas"].insert_one({
+                    "label": "⛽ Combustivel",
+                    "buyer": user,
+                    "item": "Carro",
+                    "description": "",
+                    "quantity": 1,
+                    "total_value": valor_carro,
+                    "payment_method": pagamento_carro,
+                    "installment": 0,
+                    "createdAt": datetime.now(),
+                    "pagamento_compartilhado": "👤 Pra mim",
+                    "tem_pendencia": False,
+                    "devedor": None,
+                    "valor_pendente": None,
+                    "status_pendencia": None
+                })
+                limpar_cache_dados()
+                st.success(f"✅ Abastecimento carro {fmt(valor_carro)} registrado!")
+                st.balloons()
+
+        st.markdown("---")
 
         # ===== FORMULARIO GASTO =====
         if st.session_state.form_selecionado == "gasto":
@@ -1781,6 +1818,98 @@ def main():
                     st.caption("Nenhum gasto no periodo")
         else:
             st.info("📝 Nenhum gasto registrado.")
+
+    # ========== COMBUSTIVEL ==========
+    elif menu == "⛽":
+        st.markdown('<p class="page-title">⛽ Abastecimentos</p>', unsafe_allow_html=True)
+
+        df_desp = pd.DataFrame(carregar_despesas(colls))
+
+        if not df_desp.empty:
+            df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
+
+            # Filtra apenas combustivel
+            df_combustivel = df_desp[(df_desp["label"] == "⛽ Combustivel") | (df_desp["label"].str.contains("Combustivel", na=False))]
+
+            if not df_combustivel.empty:
+                # Cards de ultimo abastecimento
+                st.markdown('<p class="section-title" style="font-size: 14px;">🏆 Ultimo Abastecimento</p>', unsafe_allow_html=True)
+
+                # Ultimo abastecimento moto
+                df_moto = df_combustivel[df_combustivel["item"].str.lower().str.contains("moto", na=False)]
+                if not df_moto.empty:
+                    ultimo_moto = df_moto.sort_values("createdAt", ascending=False).iloc[0]
+                    moto_user = ultimo_moto["buyer"]
+                    moto_data = ultimo_moto["createdAt"].strftime("%d/%m")
+                    moto_valor = ultimo_moto["total_value"]
+                else:
+                    moto_user = "-"
+                    moto_data = "-"
+                    moto_valor = 0
+
+                # Ultimo abastecimento carro
+                df_carro = df_combustivel[df_combustivel["item"].str.lower().str.contains("carro", na=False)]
+                if not df_carro.empty:
+                    ultimo_carro = df_carro.sort_values("createdAt", ascending=False).iloc[0]
+                    carro_user = ultimo_carro["buyer"]
+                    carro_data = ultimo_carro["createdAt"].strftime("%d/%m")
+                    carro_valor = ultimo_carro["total_value"]
+                else:
+                    carro_user = "-"
+                    carro_data = "-"
+                    carro_valor = 0
+
+                # Cores por usuario
+                cor_moto = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if moto_user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
+                borda_moto = "#f48fb1" if moto_user == "Susanna" else "#4fc3f7"
+                cor_carro = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if carro_user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
+                borda_carro = "#f48fb1" if carro_user == "Susanna" else "#4fc3f7"
+
+                st.markdown(f'''
+                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
+                    <div style="flex: 1; background: {cor_moto}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_moto};">
+                        <span style="font-size: 14px; opacity: 0.9;">🏍️ Moto</span><br>
+                        <span style="font-size: 11px;">{moto_user} | {moto_data}</span><br>
+                        <span style="font-size: 12px; font-weight: 600;">{fmt(moto_valor)}</span>
+                    </div>
+                    <div style="flex: 1; background: {cor_carro}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_carro};">
+                        <span style="font-size: 14px; opacity: 0.9;">🚗 Carro</span><br>
+                        <span style="font-size: 11px;">{carro_user} | {carro_data}</span><br>
+                        <span style="font-size: 12px; font-weight: 600;">{fmt(carro_valor)}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # Historico completo
+                st.markdown('<p class="section-title" style="font-size: 14px;">📜 Historico</p>', unsafe_allow_html=True)
+
+                df_combustivel_sorted = df_combustivel.sort_values("createdAt", ascending=False)
+
+                for _, abast in df_combustivel_sorted.iterrows():
+                    abast_user = abast["buyer"]
+                    abast_data = abast["createdAt"].strftime("%d/%m/%Y")
+                    abast_valor = abast["total_value"]
+                    abast_tipo = abast.get("item", "Veiculo")
+                    abast_pag = abast.get("payment_method", "-")
+
+                    cor_abast = "#e91e63" if abast_user == "Susanna" else "#03a9f4"
+                    emoji_veiculo = "🏍️" if "moto" in str(abast_tipo).lower() else "🚗"
+
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid {cor_abast};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 14px; color: white;">{emoji_veiculo} {abast_tipo}</span><br>
+                                <span style="font-size: 11px; color: #aaa;">{abast_user} | {abast_data} | {abast_pag}</span>
+                            </div>
+                            <div style="font-size: 14px; font-weight: 600; color: white;">{fmt(abast_valor)}</div>
+                        </div>
+                    </div>''', unsafe_allow_html=True)
+            else:
+                st.info("⛽ Nenhum abastecimento registrado ainda.")
+        else:
+            st.info("⛽ Nenhum abastecimento registrado ainda.")
 
     # ========== EVOLUCAO ==========
     elif menu == "📈 Evolucao":
