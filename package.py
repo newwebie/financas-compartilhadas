@@ -227,7 +227,7 @@ def get_collections(client):
     except:
         db_name = "financas"
     db = client[db_name]
-    return {"despesas": db["despesas"], "emprestimos": db["emprestimos"], "metas": db["metas"], "quitacoes": db["quitacoes"], "contas_fixas": db["contas_fixas"], "emprestimos_terceiros": db["emprestimos_terceiros"], "dividas_terceiros": db["dividas_terceiros"]}
+    return {"despesas": db["despesas"], "emprestimos": db["emprestimos"], "metas": db["metas"], "quitacoes": db["quitacoes"], "contas_fixas": db["contas_fixas"], "emprestimos_terceiros": db["emprestimos_terceiros"], "dividas_terceiros": db["dividas_terceiros"], "config": db["config"]}
 
 
 def limpar_cache_dados():
@@ -281,6 +281,66 @@ def carregar_dividas_terceiros(_colls, user):
 def carregar_pagamentos_contas_fixas(_colls, user, mes_ano):
     """Carrega pagamentos de contas fixas do usuario no mes."""
     return list(_colls["quitacoes"].find({"tipo": "conta_fixa", "pagador": user, "mes_ano": mes_ano}))
+
+
+@st.cache_data(ttl=300)
+def carregar_fechamento_fatura(_colls, user):
+    """Carrega configuracao de fechamento de fatura do usuario."""
+    return list(_colls["config"].find({"tipo": "fechamento_fatura", "user": user}))
+
+
+def get_fechamento_mes(colls, ano, mes, user):
+    """Retorna o dia de fechamento da fatura para o mes/ano especificado do usuario."""
+    fechamentos = carregar_fechamento_fatura(colls, user)
+    mes_ano = f"{ano}-{mes:02d}"
+    for f in fechamentos:
+        if f.get("mes_ano") == mes_ano:
+            return f.get("dia_fechamento", 7)  # Default dia 7
+    return 7  # Default se nao configurado
+
+
+def get_periodo_fatura(colls, user):
+    """Retorna data_inicio e data_fim do periodo atual baseado no fechamento da fatura do usuario."""
+    hoje = date.today()
+
+    # Pega fechamento do mes atual e proximo
+    fechamento_atual = get_fechamento_mes(colls, hoje.year, hoje.month, user)
+
+    if hoje.month == 12:
+        prox_ano, prox_mes = hoje.year + 1, 1
+    else:
+        prox_ano, prox_mes = hoje.year, hoje.month + 1
+
+    if hoje.month == 1:
+        ant_ano, ant_mes = hoje.year - 1, 12
+    else:
+        ant_ano, ant_mes = hoje.year, hoje.month - 1
+
+    fechamento_prox = get_fechamento_mes(colls, prox_ano, prox_mes, user)
+    fechamento_ant = get_fechamento_mes(colls, ant_ano, ant_mes, user)
+
+    # Data de fechamento do mes atual
+    try:
+        data_fechamento_atual = date(hoje.year, hoje.month, fechamento_atual)
+    except:
+        data_fechamento_atual = date(hoje.year, hoje.month, 28)
+
+    if hoje >= data_fechamento_atual:
+        # Estamos apos o fechamento - periodo atual vai do fechamento ate proximo fechamento
+        data_inicio = data_fechamento_atual
+        try:
+            data_fim = date(prox_ano, prox_mes, fechamento_prox) - timedelta(days=1)
+        except:
+            data_fim = date(prox_ano, prox_mes, 28) - timedelta(days=1)
+    else:
+        # Estamos antes do fechamento - periodo eh do fechamento anterior ate o atual
+        try:
+            data_inicio = date(ant_ano, ant_mes, fechamento_ant)
+        except:
+            data_inicio = date(ant_ano, ant_mes, 28)
+        data_fim = data_fechamento_atual - timedelta(days=1)
+
+    return data_inicio, data_fim
 
 
 def get_feriados(ano):
@@ -401,7 +461,7 @@ def main():
         if "menu_selecionado" not in st.session_state:
             st.session_state.menu_selecionado = "🏠 Inicio"
 
-        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao"]
+        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao", "⚙️ Config"]
 
         for opcao in menu_opcoes:
             tipo_btn = "primary" if st.session_state.menu_selecionado == opcao else "secondary"
@@ -632,6 +692,8 @@ def main():
         # Inicializa estado do formulario selecionado
         if "form_selecionado" not in st.session_state:
             st.session_state.form_selecionado = None
+        
+        st.markdown("")
 
         # Botoes empilhados
         if st.button("💸 Gasto", use_container_width=True, type="primary" if st.session_state.form_selecionado == "gasto" else "secondary"):
@@ -1124,25 +1186,9 @@ def main():
         df_gastos_mes = pd.DataFrame(carregar_despesas(colls))
         if not df_gastos_mes.empty:
             df_gastos_mes["createdAt"] = pd.to_datetime(df_gastos_mes["createdAt"])
-            hoje = date.today()
 
-            # Calcula periodo baseado no 5o dia util
-            quinto_dia_util_atual = get_5o_dia_util(hoje.year, hoje.month)
-
-            if hoje >= quinto_dia_util_atual:
-                data_inicio = quinto_dia_util_atual
-                if hoje.month == 12:
-                    prox_mes = date(hoje.year + 1, 1, 1)
-                else:
-                    prox_mes = date(hoje.year, hoje.month + 1, 1)
-                data_fim = get_5o_dia_util(prox_mes.year, prox_mes.month) - timedelta(days=1)
-            else:
-                if hoje.month == 1:
-                    mes_anterior = date(hoje.year - 1, 12, 1)
-                else:
-                    mes_anterior = date(hoje.year, hoje.month - 1, 1)
-                data_inicio = get_5o_dia_util(mes_anterior.year, mes_anterior.month)
-                data_fim = quinto_dia_util_atual - timedelta(days=1)
+            # Determina periodo baseado no fechamento da fatura
+            data_inicio, data_fim = get_periodo_fatura(colls, user)
 
             st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Periodo: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
 
@@ -1241,28 +1287,9 @@ def main():
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
-            hoje = date.today()
 
-            # Determina periodo de corte (5o dia util)
-            quinto_dia_util_atual = get_5o_dia_util(hoje.year, hoje.month)
-
-            if hoje >= quinto_dia_util_atual:
-                # Estamos apos o 5o dia util - periodo atual
-                data_inicio = quinto_dia_util_atual
-                # Proximo mes
-                if hoje.month == 12:
-                    prox_mes = date(hoje.year + 1, 1, 1)
-                else:
-                    prox_mes = date(hoje.year, hoje.month + 1, 1)
-                data_fim = get_5o_dia_util(prox_mes.year, prox_mes.month) - timedelta(days=1)
-            else:
-                # Estamos antes do 5o dia util - periodo anterior
-                if hoje.month == 1:
-                    mes_anterior = date(hoje.year - 1, 12, 1)
-                else:
-                    mes_anterior = date(hoje.year, hoje.month - 1, 1)
-                data_inicio = get_5o_dia_util(mes_anterior.year, mes_anterior.month)
-                data_fim = quinto_dia_util_atual - timedelta(days=1)
+            # Determina periodo baseado no fechamento da fatura
+            data_inicio, data_fim = get_periodo_fatura(colls, user)
 
             # Mostra periodo
             st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Periodo: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
@@ -1722,6 +1749,67 @@ def main():
                 st.info("📝 Voce ainda nao tem gastos registrados.")
         else:
             st.info("📝 Nenhum gasto registrado.")
+
+    # ========== CONFIG ==========
+    elif menu == "⚙️ Config":
+        st.markdown('<p class="page-title">⚙️ Configuracoes</p>', unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown('<p class="section-title">📅 Fechamento da Fatura</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size: 11px; color: #aaa; text-align: center;">Define o dia de fechamento da fatura do cartao para cada mes</p>', unsafe_allow_html=True)
+
+        hoje = date.today()
+
+        # Mostra os proximos 3 meses para configurar
+        meses_config = []
+        for i in range(3):
+            if hoje.month + i > 12:
+                meses_config.append((hoje.year + 1, (hoje.month + i - 1) % 12 + 1))
+            else:
+                meses_config.append((hoje.year, hoje.month + i))
+
+        nomes_meses = ["", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+
+        # Carrega configuracoes atuais do usuario
+        fechamentos = carregar_fechamento_fatura(colls, user)
+        fechamentos_dict = {f.get("mes_ano"): f.get("dia_fechamento", 7) for f in fechamentos}
+
+        with st.form("form_fechamento", clear_on_submit=False):
+            valores_form = {}
+            for ano, mes in meses_config:
+                mes_ano = f"{ano}-{mes:02d}"
+                dia_atual = fechamentos_dict.get(mes_ano, 7)
+                valores_form[mes_ano] = st.number_input(
+                    f"📆 {nomes_meses[mes]}/{ano}",
+                    min_value=1,
+                    max_value=28,
+                    value=dia_atual,
+                    key=f"fechamento_{mes_ano}"
+                )
+
+            if st.form_submit_button("💾 Salvar", use_container_width=True):
+                for mes_ano, dia in valores_form.items():
+                    # Atualiza ou insere para o usuario atual
+                    colls["config"].update_one(
+                        {"tipo": "fechamento_fatura", "mes_ano": mes_ano, "user": user},
+                        {"$set": {"dia_fechamento": dia}},
+                        upsert=True
+                    )
+                limpar_cache_dados()
+                st.success("✅ Fechamentos salvos!")
+                st.rerun()
+
+        # Mostra periodo atual
+        st.markdown("---")
+        st.markdown('<p class="section-title">📊 Periodo Atual</p>', unsafe_allow_html=True)
+
+        data_inicio, data_fim = get_periodo_fatura(colls, user)
+        st.markdown(f'''
+        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; text-align: center;">
+            <span style="font-size: 12px; color: #aaa;">Fatura atual</span><br>
+            <span style="font-size: 16px; color: white; font-weight: 600;">{data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}</span>
+        </div>
+        ''', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
