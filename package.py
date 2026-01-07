@@ -550,26 +550,19 @@ def main():
         if "form_selecionado" not in st.session_state:
             st.session_state.form_selecionado = None
 
-        # Botoes em grid 2x2
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💸 Gasto", use_container_width=True, type="primary" if st.session_state.form_selecionado == "gasto" else "secondary"):
-                st.session_state.form_selecionado = "gasto"
-                st.rerun()
-        with col2:
-            if st.button("🤝 Emprestei", use_container_width=True, type="primary" if st.session_state.form_selecionado == "emprestei" else "secondary"):
-                st.session_state.form_selecionado = "emprestei"
-                st.rerun()
-
-        col3, col4 = st.columns(2)
-        with col3:
-            if st.button("💳 Devo", use_container_width=True, type="primary" if st.session_state.form_selecionado == "devo" else "secondary"):
-                st.session_state.form_selecionado = "devo"
-                st.rerun()
-        with col4:
-            if st.button("📋 Conta Fixa", use_container_width=True, type="primary" if st.session_state.form_selecionado == "conta_fixa" else "secondary"):
-                st.session_state.form_selecionado = "conta_fixa"
-                st.rerun()
+        # Botoes empilhados
+        if st.button("💸 Gasto", use_container_width=True, type="primary" if st.session_state.form_selecionado == "gasto" else "secondary"):
+            st.session_state.form_selecionado = "gasto"
+            st.rerun()
+        if st.button("🤝 Emprestei", use_container_width=True, type="primary" if st.session_state.form_selecionado == "emprestei" else "secondary"):
+            st.session_state.form_selecionado = "emprestei"
+            st.rerun()
+        if st.button("💳 Devo", use_container_width=True, type="primary" if st.session_state.form_selecionado == "devo" else "secondary"):
+            st.session_state.form_selecionado = "devo"
+            st.rerun()
+        if st.button("📋 Conta Fixa", use_container_width=True, type="primary" if st.session_state.form_selecionado == "conta_fixa" else "secondary"):
+            st.session_state.form_selecionado = "conta_fixa"
+            st.rerun()
 
         st.markdown("")
 
