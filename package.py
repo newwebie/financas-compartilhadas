@@ -694,9 +694,30 @@ def main():
             tipo_btn = "primary" if st.session_state.menu_selecionado == opcao else "secondary"
             if st.button(opcao, use_container_width=True, key=f"menu_{opcao}", type=tipo_btn):
                 st.session_state.menu_selecionado = opcao
+                st.session_state.fechar_sidebar = True
                 st.rerun()
 
         menu = st.session_state.menu_selecionado
+
+    # Fecha sidebar automaticamente apos selecionar menu
+    if st.session_state.get("fechar_sidebar"):
+        st.session_state.fechar_sidebar = False
+        st.markdown("""
+        <script>
+            const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+            const closeBtn = window.parent.document.querySelector('[data-testid="stSidebar"] button[kind="header"]');
+            if (closeBtn) closeBtn.click();
+            else if (sidebar) sidebar.style.display = 'none';
+        </script>
+        """, unsafe_allow_html=True)
+        import streamlit.components.v1 as components
+        components.html("""
+        <script>
+            const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+            const closeBtn = window.parent.document.querySelector('button[data-testid="stSidebarCollapseButton"]');
+            if (closeBtn) closeBtn.click();
+        </script>
+        """, height=0)
 
     # ========== INICIO ==========
     if menu == "🏠 Inicio":
