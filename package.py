@@ -666,11 +666,16 @@ def main():
             # Busca dividas a terceiros (separando emprestimos pessoais)
             df_dividas_terceiros = pd.DataFrame(carregar_dividas_terceiros(colls, user))
             if not df_dividas_terceiros.empty:
+                # Garante que a coluna existe
+                if "emprestimo_conta" not in df_dividas_terceiros.columns:
+                    df_dividas_terceiros["emprestimo_conta"] = False
+                df_dividas_terceiros["emprestimo_conta"] = df_dividas_terceiros["emprestimo_conta"].fillna(False)
+
                 # Dividas de terceiros (pessoas)
-                df_dividas_pessoas = df_dividas_terceiros[df_dividas_terceiros.get("emprestimo_conta", pd.Series([False] * len(df_dividas_terceiros))).fillna(False) == False]
+                df_dividas_pessoas = df_dividas_terceiros[df_dividas_terceiros["emprestimo_conta"] == False]
                 total_dividas = df_dividas_pessoas["valor"].sum() if not df_dividas_pessoas.empty else 0
                 # Emprestimos pessoais (contas proprias)
-                df_emp_pessoal = df_dividas_terceiros[df_dividas_terceiros.get("emprestimo_conta", pd.Series([False] * len(df_dividas_terceiros))).fillna(False) == True]
+                df_emp_pessoal = df_dividas_terceiros[df_dividas_terceiros["emprestimo_conta"] == True]
                 total_emp_pessoal = df_emp_pessoal["valor"].sum() if not df_emp_pessoal.empty else 0
             else:
                 total_dividas = 0
@@ -683,50 +688,47 @@ def main():
             else:
                 st.markdown('<p class="section-title" style="font-size: 14px;">💫 Situacao</p>', unsafe_allow_html=True)
 
-                # Monta cards dinamicamente
-                cards_html = []
+                # Monta cards
+                cor_divida_outra = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
+                borda_divida = "#f48fb1" if user == "Susanna" else "#4fc3f7"
 
                 # Card saldo com a outra pessoa
+                card_saldo = ""
                 if saldo > 0:
-                    cards_html.append(f'''
-                        <div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
-                            <span style="font-size: 14px; opacity: 0.9;">🤑 {outro} te deve</span><br>
-                            <span style="font-size: 12px; font-weight: 600;">{fmt(saldo)}</span>
-                        </div>''')
+                    card_saldo = f'''<div style="flex: 1; background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
+                        <span style="font-size: 14px; opacity: 0.9;">🤑 {outro} te deve</span><br>
+                        <span style="font-size: 12px; font-weight: 600;">{fmt(saldo)}</span>
+                    </div>'''
                 elif saldo < 0:
-                    cor_divida_outra = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
-                    borda_divida = "#f48fb1" if user == "Susanna" else "#4fc3f7"
-                    cards_html.append(f'''
-                        <div style="flex: 1; background: {cor_divida_outra}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
-                            <span style="font-size: 14px; opacity: 0.9;">Devo pra {outro}</span><br>
-                            <span style="font-size: 12px; font-weight: 600;">{fmt(abs(saldo))}</span>
-                        </div>''')
+                    card_saldo = f'''<div style="flex: 1; background: {cor_divida_outra}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_divida};">
+                        <span style="font-size: 14px; opacity: 0.9;">Devo pra {outro}</span><br>
+                        <span style="font-size: 12px; font-weight: 600;">{fmt(abs(saldo))}</span>
+                    </div>'''
 
                 # Card dividas a terceiros
+                card_terceiros = ""
                 if total_dividas > 0:
-                    cards_html.append(f'''
-                        <div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
-                            <span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br>
-                            <span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span>
-                        </div>''')
+                    card_terceiros = f'''<div style="flex: 1; background: linear-gradient(135deg, #c62828 0%, #f44336 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ef9a9a;">
+                        <span style="font-size: 14px; opacity: 0.9;">💸 Devo (terceiros)</span><br>
+                        <span style="font-size: 12px; font-weight: 600;">{fmt(total_dividas)}</span>
+                    </div>'''
 
                 # Card emprestimos pessoais
+                card_emp_pessoal = ""
                 if total_emp_pessoal > 0:
-                    cards_html.append(f'''
-                        <div style="flex: 1; background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #bcaaa4;">
-                            <span style="font-size: 14px; opacity: 0.9;">🏦 Emp. Pessoal</span><br>
-                            <span style="font-size: 12px; font-weight: 600;">{fmt(total_emp_pessoal)}</span>
-                        </div>''')
+                    card_emp_pessoal = f'''<div style="flex: 1; background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #bcaaa4;">
+                        <span style="font-size: 14px; opacity: 0.9;">🏦 Emp. Pessoal</span><br>
+                        <span style="font-size: 12px; font-weight: 600;">{fmt(total_emp_pessoal)}</span>
+                    </div>'''
 
                 # Renderiza cards
-                if len(cards_html) == 1:
-                    st.markdown(cards_html[0], unsafe_allow_html=True)
-                else:
-                    st.markdown(f'''
-                    <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
-                        {"".join(cards_html)}
-                    </div>
-                    ''', unsafe_allow_html=True)
+                st.markdown(f'''
+                <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
+                    {card_saldo}
+                    {card_terceiros}
+                    {card_emp_pessoal}
+                </div>
+                ''', unsafe_allow_html=True)
         else:
             st.info("📝 Sem registros ainda. Va em '➕ Novo'!")
 
@@ -1126,6 +1128,8 @@ def main():
 
             # Depois mostra emprestimos pessoais (contas)
             if not df_emp_pessoal.empty:
+                st.markdown("")
+                st.markdown("")
                 st.caption("🏦 Emprestimos Pessoais")
                 for i, (_, div) in enumerate(df_emp_pessoal.iterrows()):
                     data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
@@ -1140,10 +1144,29 @@ def main():
                         </div>''', unsafe_allow_html=True)
                     with col2:
                         if st.button("✅", key=f"quitar_emp_pessoal_{i}", help="Devolvi"):
+                            # Marca como quitado
                             colls["dividas_terceiros"].update_one(
                                 {"_id": div["_id"]},
                                 {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
                             )
+                            # Registra como despesa (dinheiro saiu da conta corrente pra poupanca)
+                            colls["despesas"].insert_one({
+                                "label": "🏦 Poupanca",
+                                "buyer": user,
+                                "item": f"Devolucao - {div['credor']}",
+                                "description": div.get("descricao", ""),
+                                "quantity": 1,
+                                "total_value": div["valor"],
+                                "payment_method": "Debito",
+                                "installment": 0,
+                                "createdAt": datetime.now(),
+                                "pagamento_compartilhado": "👤 Pra mim",
+                                "tem_pendencia": False,
+                                "devedor": None,
+                                "valor_pendente": None,
+                                "status_pendencia": None,
+                                "origem": "emprestimo_pessoal"
+                            })
                             limpar_cache_dados()
                             st.rerun()
         else:
@@ -1725,6 +1748,9 @@ def main():
                 (df_desp["createdAt"].dt.date <= data_fim)
             ]
             df_meus_gastos = df_meus_gastos[~df_meus_gastos["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
+            # Exclui contas fixas (pagas ou nao) - elas ja aparecem no expander de contas fixas
+            if "origem" in df_meus_gastos.columns:
+                df_meus_gastos = df_meus_gastos[df_meus_gastos["origem"].fillna("") != "conta_fixa"]
 
             with st.expander(f"💸 Meus Gastos ", expanded=False):
                 if not df_meus_gastos.empty:
