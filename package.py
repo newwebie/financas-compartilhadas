@@ -283,6 +283,51 @@ def carregar_pagamentos_contas_fixas(_colls, user, mes_ano):
     return list(_colls["quitacoes"].find({"tipo": "conta_fixa", "pagador": user, "mes_ano": mes_ano}))
 
 
+def get_feriados(ano):
+    """Retorna lista de feriados nacionais e de SP para o ano."""
+    from datetime import date
+    feriados = [
+        # Feriados nacionais fixos
+        date(ano, 1, 1),    # Confraternizacao Universal
+        date(ano, 4, 21),   # Tiradentes
+        date(ano, 5, 1),    # Dia do Trabalho
+        date(ano, 9, 7),    # Independencia
+        date(ano, 10, 12),  # Nossa Senhora Aparecida
+        date(ano, 11, 2),   # Finados
+        date(ano, 11, 15),  # Proclamacao da Republica
+        date(ano, 12, 25),  # Natal
+        # Feriado estadual SP
+        date(ano, 7, 9),    # Revolucao Constitucionalista
+        # Feriado municipal Paulinia
+        date(ano, 2, 28),   # Aniversario de Paulinia
+    ]
+    # Carnaval e Corpus Christi (moveis) - calcular baseado na Pascoa
+    # Pascoa 2025: 20/04, 2026: 05/04, 2027: 28/03
+    pascoas = {2025: date(2025, 4, 20), 2026: date(2026, 4, 5), 2027: date(2027, 3, 28), 2028: date(2028, 4, 16)}
+    if ano in pascoas:
+        pascoa = pascoas[ano]
+        feriados.append(pascoa - timedelta(days=47))  # Carnaval (terca)
+        feriados.append(pascoa - timedelta(days=48))  # Carnaval (segunda)
+        feriados.append(pascoa - timedelta(days=2))   # Sexta-feira Santa
+        feriados.append(pascoa + timedelta(days=60))  # Corpus Christi
+    return set(feriados)
+
+
+def get_5o_dia_util(ano, mes):
+    """Calcula o 5o dia util do mes considerando feriados de Paulinia-SP."""
+    from calendar import monthrange
+    feriados = get_feriados(ano)
+    dias_uteis = 0
+    for dia in range(1, monthrange(ano, mes)[1] + 1):
+        d = date(ano, mes, dia)
+        # Dia util = segunda a sexta E nao eh feriado
+        if d.weekday() < 5 and d not in feriados:
+            dias_uteis += 1
+            if dias_uteis == 5:
+                return d
+    return date(ano, mes, 1)
+
+
 def fmt(valor):
     return f"R${valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -423,6 +468,36 @@ def main():
             # Exclui apenas Renda Variavel do grafico (Cofrinho aparece)
             gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)]
             user_cat_series = gastos_para_grafico.groupby("label")["total_value"].sum() if not gastos_para_grafico.empty else pd.Series(dtype=float)
+
+            # Calcula parcelamentos que caem neste mes (de meses anteriores)
+            total_parcelamentos = 0
+            df_todos = pd.DataFrame(carregar_despesas(colls))
+            if not df_todos.empty:
+                df_todos["createdAt"] = pd.to_datetime(df_todos["createdAt"])
+                df_parcelados = df_todos[
+                    (df_todos["buyer"] == user) &
+                    (df_todos["installment"].notna()) &
+                    (df_todos["installment"] > 0)
+                ]
+                for _, parc in df_parcelados.iterrows():
+                    data_compra = parc["createdAt"]
+                    num_parcelas = int(parc["installment"])
+                    valor_parcela = parc["total_value"] / num_parcelas
+                    # Verifica se alguma parcela cai no mes atual
+                    for p in range(num_parcelas):
+                        # Parcela p cai no mes (data_compra + p meses)
+                        mes_parcela = data_compra.month + p
+                        ano_parcela = data_compra.year + (mes_parcela - 1) // 12
+                        mes_parcela = ((mes_parcela - 1) % 12) + 1
+                        if mes_parcela == hoje.month and ano_parcela == hoje.year:
+                            total_parcelamentos += valor_parcela
+
+            # Adiciona parcelamentos como categoria se houver
+            if total_parcelamentos > 0:
+                if "💳 Parcelamentos" in user_cat_series.index:
+                    user_cat_series["💳 Parcelamentos"] += total_parcelamentos
+                else:
+                    user_cat_series["💳 Parcelamentos"] = total_parcelamentos
 
             # Adiciona contas fixas de credito ao grafico
             if not df_contas_fixas_inicio.empty:
@@ -1042,6 +1117,75 @@ def main():
         else:
             st.caption("Nenhuma conta fixa cadastrada")
 
+        # ========== GASTOS DO MES (DETALHADO) ==========
+        st.markdown("---")
+        st.markdown('<p class="section-title">📋 Gastos do Mes</p>', unsafe_allow_html=True)
+
+        df_gastos_mes = pd.DataFrame(carregar_despesas(colls))
+        if not df_gastos_mes.empty:
+            df_gastos_mes["createdAt"] = pd.to_datetime(df_gastos_mes["createdAt"])
+            hoje = date.today()
+
+            # Calcula periodo baseado no 5o dia util
+            quinto_dia_util_atual = get_5o_dia_util(hoje.year, hoje.month)
+
+            if hoje >= quinto_dia_util_atual:
+                data_inicio = quinto_dia_util_atual
+                if hoje.month == 12:
+                    prox_mes = date(hoje.year + 1, 1, 1)
+                else:
+                    prox_mes = date(hoje.year, hoje.month + 1, 1)
+                data_fim = get_5o_dia_util(prox_mes.year, prox_mes.month) - timedelta(days=1)
+            else:
+                if hoje.month == 1:
+                    mes_anterior = date(hoje.year - 1, 12, 1)
+                else:
+                    mes_anterior = date(hoje.year, hoje.month - 1, 1)
+                data_inicio = get_5o_dia_util(mes_anterior.year, mes_anterior.month)
+                data_fim = quinto_dia_util_atual - timedelta(days=1)
+
+            st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Periodo: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
+
+            # Filtra gastos do usuario no periodo
+            df_meus_gastos = df_gastos_mes[
+                (df_gastos_mes["buyer"] == user) &
+                (df_gastos_mes["createdAt"].dt.date >= data_inicio) &
+                (df_gastos_mes["createdAt"].dt.date <= data_fim)
+            ]
+
+            # Exclui Cofrinho e Renda Variavel
+            df_meus_gastos = df_meus_gastos[~df_meus_gastos["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
+
+            if not df_meus_gastos.empty:
+                total_gastos = df_meus_gastos["total_value"].sum()
+                st.markdown(f'''
+                <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 10px;">
+                    <span style="font-size: 12px; color: #aaa;">Total no periodo</span><br>
+                    <span style="font-size: 18px; color: white; font-weight: 600;">{fmt(total_gastos)}</span>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # Ordena por data decrescente
+                df_meus_gastos = df_meus_gastos.sort_values("createdAt", ascending=False)
+
+                with st.expander(f"📝 Ver detalhes ({len(df_meus_gastos)} itens)", expanded=False):
+                    for _, gasto in df_meus_gastos.iterrows():
+                        data_str = gasto["createdAt"].strftime("%d/%m")
+                        item = gasto.get("item", "-")
+                        categoria = gasto.get("label", "-")
+                        valor = gasto["total_value"]
+                        pagamento = gasto.get("payment_method", "-")
+
+                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {'#e91e63' if user == 'Susanna' else '#03a9f4'}; overflow: hidden;">
+                            <div style="font-size: 12px; color: white; word-break: break-word;">{item}</div>
+                            <div style="font-size: 11px; color: #aaa;">{categoria} | {pagamento} | {data_str}</div>
+                            <div style="font-size: 13px; color: white; font-weight: 600;">{fmt(valor)}</div>
+                        </div>''', unsafe_allow_html=True)
+            else:
+                st.caption("Nenhum gasto no periodo")
+        else:
+            st.caption("Nenhum gasto registrado")
+
     # ========== METAS ==========
     elif menu == "🎯 Metas":
         st.markdown('<p class="page-title">🎯 Minhas Metas</p>', unsafe_allow_html=True)
@@ -1098,18 +1242,6 @@ def main():
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
             hoje = date.today()
-
-            # Calcula o 5o dia util do mes atual
-            def get_5o_dia_util(ano, mes):
-                from calendar import monthrange
-                dias_uteis = 0
-                for dia in range(1, monthrange(ano, mes)[1] + 1):
-                    d = date(ano, mes, dia)
-                    if d.weekday() < 5:  # Segunda a Sexta
-                        dias_uteis += 1
-                        if dias_uteis == 5:
-                            return d
-                return date(ano, mes, 1)
 
             # Determina periodo de corte (5o dia util)
             quinto_dia_util_atual = get_5o_dia_util(hoje.year, hoje.month)
