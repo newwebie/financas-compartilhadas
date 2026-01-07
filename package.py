@@ -5,7 +5,6 @@ from datetime import datetime, date, timedelta
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from bson import ObjectId
 import certifi
 
 # Configuracao da pagina
@@ -218,7 +217,7 @@ def get_collections(client):
     except:
         db_name = "financas"
     db = client[db_name]
-    return {"despesas": db["despesas"], "emprestimos": db["emprestimos"], "metas": db["metas"], "quitacoes": db["quitacoes"], "contas_fixas": db["contas_fixas"]}
+    return {"despesas": db["despesas"], "emprestimos": db["emprestimos"], "metas": db["metas"], "quitacoes": db["quitacoes"], "contas_fixas": db["contas_fixas"], "emprestimos_terceiros": db["emprestimos_terceiros"]}
 
 
 def fmt(valor):
@@ -246,17 +245,15 @@ def show_user_selector():
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
+    if st.button("⚡ Susanna", use_container_width=True, type="primary"):
+        st.session_state.usuario_atual = "Susanna"
+        st.rerun()
 
-    with col1:
-        if st.button("⚡Susanna", use_container_width=True, type="primary"):
-            st.session_state.usuario_atual = "Susanna"
-            st.rerun()
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-    with col2:
-        if st.button("👩 Pietrah", use_container_width=True, type="secondary"):
-            st.session_state.usuario_atual = "Pietrah"
-            st.rerun()
+    if st.button("👩 Pietrah", use_container_width=True, type="secondary"):
+        st.session_state.usuario_atual = "Pietrah"
+        st.rerun()
 
 
 def show_user_badge():
@@ -424,51 +421,73 @@ def main():
                 preco = st.number_input("💵 Preco", min_value=0.01, value=1.00, format="%.2f")
 
             pagamento = st.selectbox("💳 Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"])
-            tipo_despesa = st.selectbox("🤝 Tipo", ["👤 Individual", "👯 Nossa (divide)", "✂️ Metade cada"])
-            parcelas = st.number_input("📅 Parcelas (0=a vista)", min_value=0, value=0)
+            tipo_despesa = st.selectbox("🤝 Tipo de compra", ["👤 Pra mim", "👯 Dividido (me deve metade)", "🎁 Pra outra (me deve tudo)"])
+            parcelas = st.number_input("📅 Parcelas", min_value=0, value=0)
 
             submitted = st.form_submit_button("✅ Salvar Gasto", use_container_width=True)
 
         if submitted:
             try:
                 valor_total = quantidade * preco
-                valor_final = valor_total
-                if "Metade" in tipo_despesa:
-                    valor_final = round(valor_total / 2, 2)
 
+                # Inicializa pendencia como vazia
                 pend = {"tem_pendencia": False, "devedor": None, "valor_pendente": None, "status_pendencia": None}
-                if "Nossa" in tipo_despesa:
-                    devedor = outro
-                    pend = {"tem_pendencia": True, "devedor": devedor, "valor_pendente": round(valor_final / 2, 2), "status_pendencia": "em aberto"}
+
+                # "Pra mim" - so adiciona nos meus gastos, sem pendencia
+                # "Dividido" - adiciona nos meus gastos + outra me deve metade
+                # "Pra outra" - adiciona nos meus gastos + outra me deve tudo
+
+                if "Dividido" in tipo_despesa:
+                    # Eu paguei tudo, mas a outra me deve metade
+                    pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": round(valor_total / 2, 2), "status_pendencia": "em aberto"}
+                elif "Pra outra" in tipo_despesa:
+                    # Eu comprei pra outra pessoa, ela me deve o valor total
+                    pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": valor_total, "status_pendencia": "em aberto"}
 
                 doc = {
                     "label": label, "buyer": user, "item": item, "description": description,
-                    "quantity": quantidade, "total_value": valor_final, "payment_method": pagamento,
+                    "quantity": quantidade, "total_value": valor_total, "payment_method": pagamento,
                     "installment": parcelas, "createdAt": datetime.now(), "pagamento_compartilhado": tipo_despesa, **pend
                 }
 
                 result = colls["despesas"].insert_one(doc)
 
-                if "Nossa" in tipo_despesa:
+                # Registra na collection de quitacoes se houver pendencia
+                if pend["tem_pendencia"]:
                     colls["quitacoes"].insert_one({
                         "tipo": "despesa_compartilhada", "despesa_id": result.inserted_id, "data": datetime.now(),
                         "credor": user, "devedor": pend["devedor"], "valor": pend["valor_pendente"],
                         "descricao": f"{label} - {item}" if item else label, "observacao": description, "status": "em aberto"
                     })
 
-                if "Metade" in tipo_despesa:
-                    doc2 = doc.copy()
-                    doc2.pop("_id", None)
-                    doc2["buyer"] = outro
-                    doc2["registrado_por"] = user
-                    colls["despesas"].insert_one(doc2)
-
-                st.success(f"✅ Gasto de {fmt(valor_final)} salvo!")
+                st.success(f"✅ Gasto de {fmt(valor_total)} salvo!")
                 st.balloons()
             except Exception as e:
                 st.error(f"❌ Erro: {e}")
 
         st.markdown("---")
+
+        with st.expander("🤝 Emprestimo a Terceiros"):
+            with st.form("form_emprestimo_terceiro", clear_on_submit=True):
+                pessoa_terceiro = st.text_input("👤 Pessoa", placeholder="Nome de quem te deve")
+                valor_terceiro = st.number_input("💵 Valor", min_value=0.01, value=10.00, format="%.2f", key="valor_emp_terceiro")
+                desc_terceiro = st.text_input("📝 Descricao", placeholder="Do que se trata")
+                data_devolucao = st.date_input("📅 Previsao de devolucao", value=date.today() + timedelta(days=30), format="DD/MM/YYYY")
+
+                emp_terceiro_submitted = st.form_submit_button("✅ Registrar", use_container_width=True)
+
+            if emp_terceiro_submitted and pessoa_terceiro:
+                colls["emprestimos_terceiros"].insert_one({
+                    "credor": user,
+                    "devedor": pessoa_terceiro,
+                    "valor": valor_terceiro,
+                    "descricao": desc_terceiro,
+                    "data_emprestimo": datetime.now(),
+                    "data_devolucao": datetime.combine(data_devolucao, datetime.min.time()),
+                    "status": "em aberto"
+                })
+                st.success(f"✅ Emprestimo de {fmt(valor_terceiro)} pra {pessoa_terceiro} registrado!")
+
 
         with st.expander("📋 Cadastrar Conta Fixa"):
             with st.form("form_conta_fixa", clear_on_submit=True):
@@ -498,6 +517,7 @@ def main():
         df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
         df_logs = pd.DataFrame(list(colls["quitacoes"].find({})))
 
+        # Calcula totais brutos (o que cada uma deve)
         user_deve_desp, outro_deve_desp = 0, 0
         if not df_desp.empty:
             user_deve_desp = df_desp[(df_desp["devedor"] == user) & (df_desp["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
@@ -508,96 +528,182 @@ def main():
             user_deve_emp = df_emp[(df_emp["devedor"] == user) & (df_emp["status"] == "em aberto")]["valor"].sum()
             outro_deve_emp = df_emp[(df_emp["devedor"] == outro) & (df_emp["status"] == "em aberto")]["valor"].sum()
 
-        user_deve_total = user_deve_desp + user_deve_emp
-        outro_deve_total = outro_deve_desp + outro_deve_emp
-        saldo = outro_deve_total - user_deve_total
+        user_deve_bruto = user_deve_desp + user_deve_emp
+        outro_deve_bruto = outro_deve_desp + outro_deve_emp
 
-        # Minha situacao
-        st.markdown('<p class="section-title">📋 Minha situacao</p>', unsafe_allow_html=True)
+        # SALDO LIQUIDO (ja abatido)
+        saldo_liquido = outro_deve_bruto - user_deve_bruto
 
-        if user_deve_total > 0:
-            st.markdown(f'<div class="{cor_card}"><h4>Voce deve</h4><h2>{fmt(user_deve_total)}</h2><small>Desp: {fmt(user_deve_desp)} | Emp: {fmt(user_deve_emp)}</small></div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="ok-box"><h3>✨ Voce nao deve nada!</h3></div>', unsafe_allow_html=True)
+        # Minha situacao - SALDO LIQUIDO
+        st.markdown('<p class="section-title">💰 Saldo</p>', unsafe_allow_html=True)
 
-        st.markdown("---")
-
-        # O que o outro deve pra mim
-        st.markdown(f'<p class="section-title">💰 {outro} te deve</p>', unsafe_allow_html=True)
-        if outro_deve_total > 0:
-            st.markdown(f'<div class="{cor_outro}"><h4>{outro} deve</h4><h2>{fmt(outro_deve_total)}</h2><small>Desp: {fmt(outro_deve_desp)} | Emp: {fmt(outro_deve_emp)}</small></div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="ok-box"><h3>✨ {outro} nao te deve nada!</h3></div>', unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        # Resultado final
-        st.markdown('<p class="section-title">💫 Resultado</p>', unsafe_allow_html=True)
-        if abs(saldo) < 0.01:
+        if abs(saldo_liquido) < 0.01:
             st.markdown('<div class="ok-box"><h3>✨ Voces estao quites!</h3></div>', unsafe_allow_html=True)
-        elif saldo > 0:
-            st.markdown(f'<div class="ok-box"><h3>🤑 {outro} te paga {fmt(saldo)}</h3></div>', unsafe_allow_html=True)
+        elif saldo_liquido > 0:
+            # Ela me deve (saldo positivo = ela deve pra mim)
+            st.markdown(f'<div class="ok-box"><h3>🤑 {outro} te deve {fmt(saldo_liquido)}</h3></div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="{cor_card}"><h4>Voce paga pra {outro}</h4><h2>{fmt(abs(saldo))}</h2></div>', unsafe_allow_html=True)
+            # Eu devo pra ela (saldo negativo = eu devo)
+            st.markdown(f'<div class="{cor_card}"><h4>Voce deve pra {outro}</h4><h2>{fmt(abs(saldo_liquido))}</h2></div>', unsafe_allow_html=True)
 
-        # Detalhes das pendencias
-        st.markdown("---")
-        st.markdown('<p class="section-title">🔍 Detalhamento</p>', unsafe_allow_html=True)
+        # Botao de acertar (so aparece pra quem deve)
+        if abs(saldo_liquido) >= 0.01:
+            st.markdown("")
+            quem_paga = user if saldo_liquido < 0 else outro
+            quem_recebe = outro if saldo_liquido < 0 else user
 
-        if not df_logs.empty and "tipo" in df_logs.columns and "status" in df_logs.columns:
-            logs_abertos = df_logs[(df_logs["tipo"] == "despesa_compartilhada") & (df_logs["status"] == "em aberto")]
-            meus_logs = logs_abertos[logs_abertos["devedor"] == user]
-            if not meus_logs.empty:
-                with st.expander(f"🛒 Minhas pendencias ({len(meus_logs)})", expanded=False):
-                    for _, log in meus_logs.iterrows():
-                        data_str = log["data"].strftime("%d/%m") if pd.notna(log.get("data")) else ""
-                        st.caption(f"• {log.get('descricao', '-')} | {fmt(log['valor'])} | {data_str}")
-
-        if not df_emp.empty:
-            emp_abertos = df_emp[(df_emp["status"] == "em aberto") & (df_emp["devedor"] == user)]
-            if not emp_abertos.empty:
-                with st.expander(f"💸 Emprestimos que devo ({len(emp_abertos)})", expanded=False):
-                    for _, emp in emp_abertos.iterrows():
-                        data_str = emp["createdAt"].strftime("%d/%m") if pd.notna(emp.get("createdAt")) else ""
-                        st.caption(f"• {emp['credor']} me emprestou {fmt(emp['valor'])} | {data_str}")
-
-        # Quitar
-        if abs(saldo) > 0.01:
-            st.markdown("---")  
-            st.markdown('<p class="section-title">✅ Quitar</p>', unsafe_allow_html=True)
-
-            with st.form("form_quitar"):
-                valor_quitar = st.number_input("Valor", min_value=0.01, max_value=float(max(user_deve_total, outro_deve_total, 0.01)), value=float(abs(saldo)))
-                obs_quitacao = st.text_input("Obs")
-
-                if st.form_submit_button("✅ Quitar", use_container_width=True):
-                    quitacao = {
-                        "tipo": "quitacao", "data": datetime.now(), "valor": valor_quitar,
-                        "de": outro if saldo > 0 else user,
-                        "para": user if saldo > 0 else outro, "observacao": obs_quitacao
+            if quem_paga == user and st.button(f"✅ Acertar (Pagar {fmt(abs(saldo_liquido))} pra {quem_recebe})", use_container_width=True, type="primary"):
+                # Registra o acerto
+                colls["quitacoes"].insert_one({
+                    "tipo": "acerto",
+                    "data": datetime.now(),
+                    "de": quem_paga,
+                    "para": quem_recebe,
+                    "valor": abs(saldo_liquido),
+                    "itens_quitados": {
+                        "user_devia": user_deve_bruto,
+                        "outro_devia": outro_deve_bruto
                     }
-                    colls["quitacoes"].insert_one(quitacao)
+                })
 
-                    quem_paga = outro if saldo > 0 else user
-                    colls["despesas"].update_many({"devedor": quem_paga, "status_pendencia": "em aberto"}, {"$set": {"status_pendencia": "quitado", "data_quitacao": datetime.now()}})
-                    colls["emprestimos"].update_many({"devedor": quem_paga, "status": "em aberto"}, {"$set": {"status": "quitado", "data_quitacao": datetime.now()}})
-                    colls["quitacoes"].update_many({"devedor": quem_paga, "status": "em aberto", "tipo": "despesa_compartilhada"}, {"$set": {"status": "quitado", "data_quitacao": datetime.now()}})
+                # Quita TODOS os itens em aberto (de ambas)
+                colls["despesas"].update_many(
+                    {"status_pendencia": "em aberto"},
+                    {"$set": {"status_pendencia": "quitado", "data_quitacao": datetime.now()}}
+                )
+                colls["emprestimos"].update_many(
+                    {"status": "em aberto"},
+                    {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
+                )
+                colls["quitacoes"].update_many(
+                    {"status": "em aberto", "tipo": "despesa_compartilhada"},
+                    {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
+                )
 
-                    st.success("✅ Quitado!")
-                    st.balloons()
-                    st.rerun()
+                st.success(f"✅ Acertado! {quem_paga} pagou {fmt(abs(saldo_liquido))} pra {quem_recebe}")
+                st.balloons()
+                st.rerun()
 
-        # Historico
+        st.markdown("---")
+
+        # Detalhamento (para referencia)
+        st.markdown('<p class="section-title">📋 Detalhamento</p>', unsafe_allow_html=True)
+
+        # Mostra resumo
+        st.markdown(f'''
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <div style="flex: 1; background: rgba(233,30,99,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                <span style="font-size: 8px; color: #f48fb1;">Voce deve</span><br>
+                <span style="font-size: 11px; color: white; font-weight: 600;">{fmt(user_deve_bruto)}</span>
+            </div>
+            <div style="flex: 1; background: rgba(3,169,244,0.2); padding: 6px; border-radius: 6px; text-align: center;">
+                <span style="font-size: 8px; color: #4fc3f7;">{outro} deve</span><br>
+                <span style="font-size: 11px; color: white; font-weight: 600;">{fmt(outro_deve_bruto)}</span>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        # Lista de itens pendentes (todos juntos para referencia)
+        todas_pendencias = []
+
+        # Minhas pendencias
+        if not df_logs.empty and "tipo" in df_logs.columns and "status" in df_logs.columns:
+            logs_user = df_logs[(df_logs["tipo"] == "despesa_compartilhada") & (df_logs["status"] == "em aberto") & (df_logs["devedor"] == user)]
+            for _, log in logs_user.iterrows():
+                todas_pendencias.append({
+                    "quem": "Voce",
+                    "descricao": log.get("descricao", "-"),
+                    "valor": log["valor"],
+                    "data": log["data"].strftime("%d/%m") if pd.notna(log.get("data")) else ""
+                })
+
+        # Pendencias da outra
+        if not df_logs.empty and "tipo" in df_logs.columns and "status" in df_logs.columns:
+            logs_outro = df_logs[(df_logs["tipo"] == "despesa_compartilhada") & (df_logs["status"] == "em aberto") & (df_logs["devedor"] == outro)]
+            for _, log in logs_outro.iterrows():
+                todas_pendencias.append({
+                    "quem": outro,
+                    "descricao": log.get("descricao", "-"),
+                    "valor": log["valor"],
+                    "data": log["data"].strftime("%d/%m") if pd.notna(log.get("data")) else ""
+                })
+
+        # Emprestimos
+        if not df_emp.empty:
+            emp_user = df_emp[(df_emp["status"] == "em aberto") & (df_emp["devedor"] == user)]
+            for _, emp in emp_user.iterrows():
+                todas_pendencias.append({
+                    "quem": "Voce",
+                    "descricao": f"Emp: {emp.get('motivo', '-')}",
+                    "valor": emp["valor"],
+                    "data": emp["createdAt"].strftime("%d/%m") if pd.notna(emp.get("createdAt")) else ""
+                })
+
+            emp_outro = df_emp[(df_emp["status"] == "em aberto") & (df_emp["devedor"] == outro)]
+            for _, emp in emp_outro.iterrows():
+                todas_pendencias.append({
+                    "quem": outro,
+                    "descricao": f"Emp: {emp.get('motivo', '-')}",
+                    "valor": emp["valor"],
+                    "data": emp["createdAt"].strftime("%d/%m") if pd.notna(emp.get("createdAt")) else ""
+                })
+
+        if todas_pendencias:
+            with st.expander(f"📝 Itens pendentes ({len(todas_pendencias)})", expanded=False):
+                for pend in todas_pendencias:
+                    cor_tag = "#e91e63" if pend["quem"] == "Voce" else "#03a9f4"
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {cor_tag};">
+                        <span style="font-size: 8px; color: {cor_tag};">{pend["quem"]} deve</span><br>
+                        <span style="font-size: 9px; color: white;">{pend["descricao"]}</span>
+                        <span style="font-size: 8px; color: #aaa; float: right;">{fmt(pend["valor"])} | {pend["data"]}</span>
+                    </div>''', unsafe_allow_html=True)
+        else:
+            st.caption("Nenhum item pendente")
+
+        # Historico de acertos
         if not df_logs.empty and "tipo" in df_logs.columns:
-            quitacoes_historico = df_logs[df_logs["tipo"] == "quitacao"]
-            if not quitacoes_historico.empty:
-                st.markdown("---")
-                with st.expander("📜 Historico de quitacoes"):
-                    quitacoes_historico["data"] = pd.to_datetime(quitacoes_historico["data"])
-                    quitacoes_historico = quitacoes_historico.sort_values("data", ascending=False)
-                    for _, row in quitacoes_historico.head(10).iterrows():
-                        data_str = row["data"].strftime("%d/%m/%Y") if pd.notna(row.get("data")) else ""
-                        st.caption(f"• {row.get('de', '?')} -> {row.get('para', '?')} | {fmt(row['valor'])} | {data_str}")
+            acertos = df_logs[df_logs["tipo"] == "acerto"]
+            if not acertos.empty:
+                with st.expander("📜 Historico de acertos", expanded=False):
+                    acertos = acertos.sort_values("data", ascending=False)
+                    for _, acerto in acertos.head(10).iterrows():
+                        data_str = acerto["data"].strftime("%d/%m/%Y") if pd.notna(acerto.get("data")) else ""
+                        st.caption(f"• {acerto.get('de', '?')} pagou {fmt(acerto['valor'])} pra {acerto.get('para', '?')} | {data_str}")
+
+        # ========== EMPRESTIMOS A TERCEIROS ==========
+        st.markdown("---")
+        st.markdown('<p class="section-title">🤝 Emprestimos a Terceiros</p>', unsafe_allow_html=True)
+
+        # Busca emprestimos a terceiros do usuario atual (da nova collection)
+        df_terceiros = pd.DataFrame(list(colls["emprestimos_terceiros"].find({"credor": user, "status": "em aberto"})))
+
+        if not df_terceiros.empty:
+            # Calcula total
+            total_terceiros = df_terceiros["valor"].sum()
+            st.markdown(f'<div style="background: rgba(156,39,176,0.2); padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 10px;"><span style="font-size: 8px; color: #ce93d8;">Total a receber</span><br><span style="font-size: 12px; color: white; font-weight: 600;">{fmt(total_terceiros)}</span></div>', unsafe_allow_html=True)
+
+            for i, (_, emp) in enumerate(df_terceiros.iterrows()):
+                # Formata datas
+                data_emp = emp["data_emprestimo"].strftime("%d/%m") if pd.notna(emp.get("data_emprestimo")) else ""
+                data_dev = emp["data_devolucao"].strftime("%d/%m") if pd.notna(emp.get("data_devolucao")) else ""
+
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #9c27b0;">
+                        <span style="font-size: 10px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</span><br>
+                        <span style="font-size: 8px; color: #aaa;">{emp.get("descricao", "-")}</span><br>
+                        <span style="font-size: 9px; color: white;">{fmt(emp["valor"])}</span>
+                        <span style="font-size: 8px; color: #888;"> | Emp: {data_emp} | Dev: {data_dev}</span>
+                    </div>''', unsafe_allow_html=True)
+                with col2:
+                    if st.button("✅", key=f"quitar_terceiro_{i}", help="Recebido"):
+                        colls["emprestimos_terceiros"].update_one(
+                            {"_id": emp["_id"]},
+                            {"$set": {"status": "quitado", "data_quitacao": datetime.now()}}
+                        )
+                        st.rerun()
+        else:
+            st.caption("Nenhum emprestimo a terceiros")
 
     # ========== EMPRESTIMOS ==========
     elif menu == "💸 Emprestimo":
