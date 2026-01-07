@@ -140,6 +140,28 @@ st.markdown("""
     .stProgress > div > div { height: 5px; border-radius: 3px; }
 
     [data-testid="column"] { padding: 0 1px !important; }
+
+    /* Forca colunas lado a lado em mobile */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        min-width: 0 !important;
+        flex: 1 !important;
+    }
+
+    /* Container flexbox para cards */
+    .cards-row {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 6px;
+        width: 100%;
+    }
+    .cards-row > div {
+        flex: 1;
+        min-width: 0;
+    }
     .stCaption { font-size: 9px !important; }
 
     .user-selector {
@@ -296,23 +318,26 @@ def main():
             # Card 3: Renda Variavel
             renda_variavel = meus_registros[meus_registros["label"].str.contains("Renda Variavel", na=False)]["total_value"].sum()
 
-            # Exibir os 3 cards
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown(f'''<div class="{cor_card}">
-                    <h4>💸 Gastos</h4>
-                    <h2>{fmt(gastos_reais)}</h2>
-                </div>''', unsafe_allow_html=True)
-            with c2:
-                st.markdown(f'''<div style="background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 4px 6px; border-radius: 6px; color: white; margin: 1px 0; border-left: 2px solid #81c784;">
+            # Exibir os 3 cards com flexbox (garante lado a lado em mobile)
+            cor_gastos = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
+            borda_gastos = "#f48fb1" if user == "Susanna" else "#4fc3f7"
+
+            st.markdown(f'''
+            <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
+                <div style="flex: 1; background: {cor_gastos}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_gastos};">
+                    <h4 style="margin: 0; font-size: 8px; opacity: 0.9;">💸 Gastos</h4>
+                    <h2 style="margin: 0; font-size: 11px; font-weight: 600;">{fmt(gastos_reais)}</h2>
+                </div>
+                <div style="flex: 1; background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
                     <h4 style="margin: 0; font-size: 8px; opacity: 0.9;">🐷 Cofrinho</h4>
                     <h2 style="margin: 0; font-size: 11px; font-weight: 600;">{fmt(cofrinho)}</h2>
-                </div>''', unsafe_allow_html=True)
-            with c3:
-                st.markdown(f'''<div style="background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 4px 6px; border-radius: 6px; color: white; margin: 1px 0; border-left: 2px solid #ffcc80;">
+                </div>
+                <div style="flex: 1; background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ffcc80;">
                     <h4 style="margin: 0; font-size: 8px; opacity: 0.9;">💵 Renda Extra</h4>
                     <h2 style="margin: 0; font-size: 11px; font-weight: 600;">{fmt(renda_variavel)}</h2>
-                </div>''', unsafe_allow_html=True)
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
 
             st.markdown("---")
 
@@ -328,21 +353,30 @@ def main():
                 # Cores bem distintas para mobile
                 cores_distintas = ['#e91e63', '#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#ffeb3b', '#f44336', '#8bc34a', '#673ab7', '#ff5722', '#03a9f4']
 
-                fig = px.bar(user_cat, x="total_value", y="label", orientation='h',
-                            color="label", color_discrete_sequence=cores_distintas,
-                            text=user_cat["total_value"].apply(lambda x: fmt(x)))
-                fig.update_traces(textposition='outside', textfont=dict(size=9, color='white'))
-                fig.update_layout(
-                    showlegend=False,
-                    margin=dict(t=5, b=5, l=5, r=60),
-                    height=max(len(user_cat) * 35, 120),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white', size=9),
-                    xaxis=dict(visible=False, title=None),
-                    yaxis=dict(showgrid=False, title=None, tickfont=dict(size=9))
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                # Calcula porcentagem baseada no maior valor (100%)
+                max_valor = user_cat["total_value"].max()
+                total_geral = user_cat["total_value"].sum()
+
+                # Gera barras de progresso em HTML
+                barras_html = ""
+                for i, (_, row) in enumerate(user_cat.iterrows()):
+                    cor = cores_distintas[i % len(cores_distintas)]
+                    pct_barra = (row["total_value"] / max_valor) * 100
+                    pct_total = (row["total_value"] / total_geral) * 100
+
+                    barras_html += f'''
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span style="font-size: 9px; color: white;">{row["label"]}</span>
+                            <span style="font-size: 9px; color: #aaa;">{fmt(row["total_value"])} ({pct_total:.1f}%)</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: {cor}; width: {pct_barra}%; height: 100%; border-radius: 4px; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                    '''
+
+                st.markdown(barras_html, unsafe_allow_html=True)
             else:
                 st.caption("Sem gastos ainda")
 
@@ -529,7 +563,7 @@ def main():
 
         # Quitar
         if abs(saldo) > 0.01:
-            st.markdown("---")
+            st.markdown("---")  
             st.markdown('<p class="section-title">✅ Quitar</p>', unsafe_allow_html=True)
 
             with st.form("form_quitar"):
