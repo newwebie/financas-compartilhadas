@@ -512,6 +512,11 @@ def main():
                             contas_fixas_credito_inicio += conta["valor"] / 2
             gastos_reais += contas_fixas_credito_inicio
 
+            # Soma emprestimos a terceiros (dinheiro que saiu do bolso)
+            df_emprestimos_terceiros_inicio = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+            if not df_emprestimos_terceiros_inicio.empty:
+                gastos_reais += df_emprestimos_terceiros_inicio["valor"].sum()
+
             # Card 2: Cofrinho
             df_cofrinho_card = meus_registros[meus_registros["label"].str.contains("Cofrinho", na=False)] if not meus_registros.empty else pd.DataFrame()
             cofrinho = df_cofrinho_card["total_value"].sum() if not df_cofrinho_card.empty else 0
@@ -550,39 +555,6 @@ def main():
             # Exclui apenas Renda Variavel do grafico
             gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)]
             user_cat_series = gastos_para_grafico.groupby("label")["total_value"].sum() if not gastos_para_grafico.empty else pd.Series(dtype=float)
-
-            # Calcula parcelamentos que caem no periodo da fatura
-            total_parcelamentos = 0
-            df_parcelados = df[
-                (df["buyer"] == user) &
-                (df["installment"].notna()) &
-                (df["installment"] > 0)
-            ]
-            if not df_parcelados.empty:
-                for _, parc in df_parcelados.iterrows():
-                    data_compra = parc["createdAt"].date()
-                    num_parcelas = int(parc["installment"])
-                    valor_parcela = parc["total_value"] / num_parcelas
-                    # Verifica se alguma parcela cai no periodo da fatura
-                    for p in range(num_parcelas):
-                        # Calcula data aproximada da parcela (mes da compra + p meses)
-                        mes_parcela = data_compra.month + p
-                        ano_parcela = data_compra.year + (mes_parcela - 1) // 12
-                        mes_parcela = ((mes_parcela - 1) % 12) + 1
-                        # Usa dia 15 como referencia para o mes da parcela
-                        try:
-                            data_parcela = date(ano_parcela, mes_parcela, 15)
-                        except:
-                            continue
-                        if data_inicio <= data_parcela <= data_fim:
-                            total_parcelamentos += valor_parcela
-
-            # Adiciona parcelamentos como categoria se houver
-            if total_parcelamentos > 0:
-                if "💳 Parcelamentos" in user_cat_series.index:
-                    user_cat_series["💳 Parcelamentos"] += total_parcelamentos
-                else:
-                    user_cat_series["💳 Parcelamentos"] = total_parcelamentos
 
             # Adiciona contas fixas de credito ao grafico
             if not df_contas_fixas_inicio.empty:
@@ -1514,7 +1486,12 @@ def main():
 
             # Totais
             total_var = df_user_gastos["total_value"].sum() if not df_user_gastos.empty else 0
-            total_geral = total_var + user_fixas
+
+            # Soma emprestimos a terceiros
+            df_emprestimos_terceiros_rel = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+            total_emprestei = df_emprestimos_terceiros_rel["valor"].sum() if not df_emprestimos_terceiros_rel.empty else 0
+
+            total_geral = total_var + user_fixas + total_emprestei
 
             # ========== RESUMO DA FATURA ==========
             st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Fatura: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
