@@ -18,9 +18,17 @@ st.set_page_config(
 # CSS otimizado para mobile 6.7"
 st.markdown("""
 <style>
+    * {
+        box-sizing: border-box;
+    }
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
     .block-container {
         padding: 0.5rem 0.75rem !important;
         max-width: 100% !important;
+        overflow-x: hidden !important;
     }
 
     [data-testid="stSidebar"] {
@@ -843,9 +851,9 @@ def main():
             with st.expander(f"📝 Itens pendentes ({len(todas_pendencias)})", expanded=False):
                 for pend in todas_pendencias:
                     cor_tag = "#e91e63" if pend["quem"] == "Voce" else "#03a9f4"
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {cor_tag};">
-                        <span style="font-size: 12px; color: white;">{pend["descricao"]}</span>
-                        <span style="font-size: 11px; color: #aaa; float: right;">{fmt(pend["valor"])} | {pend["data"]}</span>
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {cor_tag}; overflow: hidden;">
+                        <div style="font-size: 12px; color: white; word-break: break-word;">{pend["descricao"]}</div>
+                        <div style="font-size: 11px; color: #aaa;">{fmt(pend["valor"])} | {pend["data"]}</div>
                     </div>''', unsafe_allow_html=True)
         else:
             st.caption("Nenhum item pendente")
@@ -877,13 +885,12 @@ def main():
                 data_emp = emp["data_emprestimo"].strftime("%d/%m") if pd.notna(emp.get("data_emprestimo")) else ""
                 data_dev = emp["data_devolucao"].strftime("%d/%m") if pd.notna(emp.get("data_devolucao")) else ""
 
-                col1, col2 = st.columns([4, 1])
+                col1, col2 = st.columns([5, 1])
                 with col1:
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #9c27b0;">
-                        <span style="font-size: 14px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</span><br>
-                        <span style="font-size: 12px; color: #aaa;">{emp.get("descricao", "-")}</span><br>
-                        <span style="font-size: 14px; color: white;">{fmt(emp["valor"])}</span>
-                        <span style="font-size: 11px; color: #888;"> | Emp: {data_emp} | Dev: {data_dev}</span>
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #9c27b0; overflow: hidden;">
+                        <div style="font-size: 14px; color: #ce93d8; font-weight: 600;">{emp["devedor"]}</div>
+                        <div style="font-size: 12px; color: #aaa; word-break: break-word;">{emp.get("descricao", "-")}</div>
+                        <div style="font-size: 14px; color: white;">{fmt(emp["valor"])} <span style="font-size: 10px; color: #888;">| {data_emp} - {data_dev}</span></div>
                     </div>''', unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"quitar_terceiro_{i}", help="Recebido"):
@@ -910,13 +917,12 @@ def main():
                 data_emp = div["data_emprestimo"].strftime("%d/%m") if pd.notna(div.get("data_emprestimo")) else ""
                 data_pag = div["data_pagamento"].strftime("%d/%m") if pd.notna(div.get("data_pagamento")) else ""
 
-                col1, col2 = st.columns([4, 1])
+                col1, col2 = st.columns([5, 1])
                 with col1:
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336;">
-                        <span style="font-size: 14px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</span><br>
-                        <span style="font-size: 12px; color: #aaa;">{div.get("descricao", "-")}</span><br>
-                        <span style="font-size: 14px; color: white;">{fmt(div["valor"])}</span>
-                        <span style="font-size: 11px; color: #888;"> | Emp: {data_emp} | Pag: {data_pag}</span>
+                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid #f44336; overflow: hidden;">
+                        <div style="font-size: 14px; color: #ef9a9a; font-weight: 600;">{div["credor"]}</div>
+                        <div style="font-size: 12px; color: #aaa; word-break: break-word;">{div.get("descricao", "-")}</div>
+                        <div style="font-size: 14px; color: white;">{fmt(div["valor"])} <span style="font-size: 10px; color: #888;">| {data_emp} - {data_pag}</span></div>
                     </div>''', unsafe_allow_html=True)
                 with col2:
                     if st.button("✅", key=f"quitar_divida_{i}", help="Paguei"):
@@ -989,13 +995,12 @@ def main():
                     cor_borda = "#4caf50" if ja_paga else "#ff9800"
                     icone_status = "✅" if ja_paga else "⏳"
 
-                    col1, col2 = st.columns([4, 1])
+                    col1, col2 = st.columns([5, 1])
                     with col1:
-                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid {cor_borda};">
-                            <span style="font-size: 14px; color: white; font-weight: 600;">{icone_status} {conta["nome"]}</span><br>
-                            <span style="font-size: 12px; color: #aaa;">{conta["categoria"]}</span>
-                            <span style="font-size: 14px; color: white; float: right;">{fmt(conta["meu_valor"])}</span><br>
-                            <span style="font-size: 11px; color: #888;">Vence dia {int(conta["dia_vencimento"])}</span>
+                        st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 2px solid {cor_borda}; overflow: hidden;">
+                            <div style="font-size: 14px; color: white; font-weight: 600;">{icone_status} {conta["nome"]}</div>
+                            <div style="font-size: 12px; color: #aaa;">{conta["categoria"]}</div>
+                            <div style="font-size: 14px; color: white;">{fmt(conta["meu_valor"])} <span style="font-size: 10px; color: #888;">| Vence dia {int(conta["dia_vencimento"])}</span></div>
                         </div>''', unsafe_allow_html=True)
                     with col2:
                         if not ja_paga:
