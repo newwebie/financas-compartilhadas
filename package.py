@@ -1361,16 +1361,18 @@ def main():
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
-            df_desp["mes_ano"] = df_desp["createdAt"].dt.to_period("M")
             df_desp["dia_semana"] = df_desp["createdAt"].dt.dayofweek
             df_desp["dia"] = df_desp["createdAt"].dt.day
 
-            # Filtros
-            meses = sorted(df_desp["mes_ano"].unique(), reverse=True)
-            mes_selecionado = st.selectbox("📅 Mes", meses, format_func=lambda x: x.strftime("%B %Y"))
+            # Periodo baseado no fechamento da fatura
+            data_inicio, data_fim = get_periodo_fatura(colls, user)
 
-            df_mes = df_desp[df_desp["mes_ano"] == mes_selecionado]
-            df_user = df_mes[df_mes["buyer"] == user]
+            # Filtra pelo periodo da fatura
+            df_user = df_desp[
+                (df_desp["buyer"] == user) &
+                (df_desp["createdAt"].dt.date >= data_inicio) &
+                (df_desp["createdAt"].dt.date <= data_fim)
+            ]
 
             # Filtra gastos reais (sem Cofrinho e Renda Variavel)
             df_user_gastos = df_user[~df_user["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
@@ -1383,13 +1385,14 @@ def main():
                 user_fixas += divididas / 2
 
             # Totais
-            total_var = df_user_gastos["total_value"].sum()
+            total_var = df_user_gastos["total_value"].sum() if not df_user_gastos.empty else 0
             total_geral = total_var + user_fixas
 
-            # ========== RESUMO DO MES ==========
+            # ========== RESUMO DA FATURA ==========
+            st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Fatura: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
             st.markdown(f'''
             <div style="background: linear-gradient(135deg, {'#c2185b' if user == 'Susanna' else '#0277bd'} 0%, {'#e91e63' if user == 'Susanna' else '#03a9f4'} 100%); padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 10px;">
-                <span style="font-size: 11px; color: rgba(255,255,255,0.8);">Total do Mes</span>
+                <span style="font-size: 11px; color: rgba(255,255,255,0.8);">Total do mês</span>
                 <h2 style="margin: 4px 0; font-size: 24px; color: white; font-weight: 600;">{fmt(total_geral)}</h2>
                 <span style="font-size: 10px; color: rgba(255,255,255,0.7);">Variaveis: {fmt(total_var)} | Fixas: {fmt(user_fixas)}</span>
             </div>
@@ -1402,11 +1405,9 @@ def main():
                 num_compras = len(df_user_gastos)
                 media_por_compra = total_var / num_compras if num_compras > 0 else 0
 
-                # Dias no mes
-                from calendar import monthrange
-                mes_py = mes_selecionado.to_timestamp()
-                dias_no_mes = monthrange(mes_py.year, mes_py.month)[1]
-                media_diaria = total_var / dias_no_mes
+                # Dias no periodo da fatura
+                dias_no_periodo = (data_fim - data_inicio).days + 1
+                media_diaria = total_var / dias_no_periodo if dias_no_periodo > 0 else 0
 
                 # Dia da semana que mais gasta
                 dias_semana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
@@ -1460,32 +1461,6 @@ def main():
                     </div>
                     ''', unsafe_allow_html=True)
 
-            # ========== COMPARATIVO COM MES ANTERIOR ==========
-            if len(meses) > 1:
-                idx_atual = list(meses).index(mes_selecionado)
-                if idx_atual < len(meses) - 1:
-                    mes_anterior = meses[idx_atual + 1]
-                    df_mes_ant = df_desp[(df_desp["mes_ano"] == mes_anterior) & (df_desp["buyer"] == user)]
-                    df_mes_ant_gastos = df_mes_ant[~df_mes_ant["label"].str.contains("Cofrinho|Renda Variavel", na=False)]
-                    total_ant = df_mes_ant_gastos["total_value"].sum()
-
-                    if total_ant > 0:
-                        diff = total_var - total_ant
-                        diff_pct = (diff / total_ant) * 100
-
-                        cor_diff = "#4caf50" if diff < 0 else "#f44336"
-                        seta = "↓" if diff < 0 else "↑"
-                        texto = "menos" if diff < 0 else "mais"
-
-                        st.markdown("---")
-                        st.markdown(f'''
-                        <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; text-align: center;">
-                            <span style="font-size: 10px; color: #aaa;">vs mes anterior</span><br>
-                            <span style="font-size: 16px; color: {cor_diff}; font-weight: 600;">{seta} {abs(diff_pct):.0f}% {texto}</span><br>
-                            <span style="font-size: 10px; color: #888;">{fmt(abs(diff))} de diferenca</span>
-                        </div>
-                        ''', unsafe_allow_html=True)
-
             # ========== CONTROLE DE CARTAO ==========
             st.markdown("---")
             st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">💳 Controle de Cartao</p>', unsafe_allow_html=True)
@@ -1510,34 +1485,40 @@ def main():
                     parcelas_restantes = max(0, parcelas_total - meses_passados - 1)
                     parcelas_a_vencer += valor_parcela * parcelas_restantes
 
-            # Previsao da fatura (credito do mes + parcelas de compras anteriores)
+            # Previsao da fatura (credito do periodo + parcelas de compras anteriores)
             parcelas_este_mes = 0
             parcelas_prox_mes = 0
+            hoje = date.today()
             if not df_parcelados.empty:
-                mes_atual = mes_selecionado.to_timestamp()
-                # Calcula proximo mes
-                if mes_atual.month == 12:
-                    prox_mes = date(mes_atual.year + 1, 1, 1)
+                # Calcula proximo mes baseado no periodo da fatura
+                if data_fim.month == 12:
+                    prox_mes = date(data_fim.year + 1, 1, 15)
                 else:
-                    prox_mes = date(mes_atual.year, mes_atual.month + 1, 1)
+                    prox_mes = date(data_fim.year, data_fim.month + 1, 15)
 
                 for _, compra in df_parcelados.iterrows():
                     parcelas_total = compra["installment"]
                     valor_parcela = compra["total_value"] / parcelas_total
-                    data_compra = compra["createdAt"]
+                    data_compra = compra["createdAt"].date()
 
-                    # Verifica se essa parcela cai neste mes
-                    meses_desde = (mes_atual.year - data_compra.year) * 12 + (mes_atual.month - data_compra.month)
-                    if 0 <= meses_desde < parcelas_total:
-                        parcelas_este_mes += valor_parcela
-
-                    # Verifica se cai no proximo mes
-                    meses_desde_prox = (prox_mes.year - data_compra.year) * 12 + (prox_mes.month - data_compra.month)
-                    if 0 <= meses_desde_prox < parcelas_total:
-                        parcelas_prox_mes += valor_parcela
+                    # Verifica se alguma parcela cai no periodo atual
+                    for p in range(int(parcelas_total)):
+                        mes_parcela = data_compra.month + p
+                        ano_parcela = data_compra.year + (mes_parcela - 1) // 12
+                        mes_parcela = ((mes_parcela - 1) % 12) + 1
+                        try:
+                            data_parcela = date(ano_parcela, mes_parcela, 15)
+                        except:
+                            continue
+                        if data_inicio <= data_parcela <= data_fim:
+                            parcelas_este_mes += valor_parcela
+                        elif data_fim < data_parcela <= prox_mes:
+                            parcelas_prox_mes += valor_parcela
 
             # Compras a vista no credito
-            credito_avista = df_user[(df_user["payment_method"] == "Credito") & ((df_user["installment"] == 0) | (df_user["installment"] == 1))]["total_value"].sum()
+            credito_avista = 0
+            if not df_user.empty:
+                credito_avista = df_user[(df_user["payment_method"] == "Credito") & ((df_user["installment"] == 0) | (df_user["installment"] == 1))]["total_value"].sum()
 
             # Contas fixas no cartao de credito
             contas_fixas_credito = 0
@@ -1552,6 +1533,9 @@ def main():
             fatura_estimada = credito_avista + parcelas_este_mes + contas_fixas_credito
             fatura_prox_mes = parcelas_prox_mes + contas_fixas_credito
 
+            # Compromisso = parcelas restantes + contas fixas de credito (compromisso mensal recorrente)
+            compromisso_total = parcelas_a_vencer + contas_fixas_credito
+
             st.markdown(f'''
             <div style="display: flex; flex-direction: row; gap: 6px; width: 100%; margin-bottom: 8px;">
                 <div style="flex: 1; background: rgba(156,39,176,0.2); padding: 6px; border-radius: 6px; text-align: center;">
@@ -1564,7 +1548,7 @@ def main():
                 </div>
                 <div style="flex: 1; background: rgba(255,152,0,0.2); padding: 6px; border-radius: 6px; text-align: center;">
                     <span style="font-size: 10px; color: #ffcc80;">Compromisso</span><br>
-                    <span style="font-size: 16px; color: white; font-weight: 600;">{fmt(parcelas_a_vencer)}</span>
+                    <span style="font-size: 16px; color: white; font-weight: 600;">{fmt(compromisso_total)}</span>
                 </div>
             </div>
             ''', unsafe_allow_html=True)
@@ -1683,6 +1667,16 @@ def main():
                         categoria = gasto.get("label", "-")
                         valor = gasto["total_value"]
                         pagamento = gasto.get("payment_method", "-")
+                        num_parcelas = gasto.get("installment", 0)
+
+                        # Se for parcelamento (installment > 1), mostra "Parcelamento" e qual parcela atual
+                        if pagamento == "Credito" and num_parcelas > 1:
+                            pagamento = "Parcelamento"
+                            data_compra = gasto["createdAt"].date()
+                            meses_passados = (data_fim.year - data_compra.year) * 12 + (data_fim.month - data_compra.month)
+                            parcela_atual = min(meses_passados + 1, int(num_parcelas))
+                            data_str = f"{parcela_atual}/{int(num_parcelas)}"
+                            valor = valor / num_parcelas  # Valor da parcela
 
                         st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; border-left: 2px solid {'#e91e63' if user == 'Susanna' else '#03a9f4'}; overflow: hidden;">
                             <div style="font-size: 12px; color: white; word-break: break-word;">{item}</div>
