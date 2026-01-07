@@ -322,21 +322,23 @@ def main():
             st.markdown(f'''
             <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
                 <div style="flex: 1; background: {cor_gastos}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_gastos};">
-                    <h4 style="margin: 0; font-size: 11px; opacity: 0.9;">💸 Gastos</h4>
-                    <h2 style="margin: 0; font-size: 14px; font-weight: 600;">{fmt(gastos_reais)}</h2>
+                    <h4 style="margin: 0; font-size: 14px; opacity: 0.9;">💸 Gastos</h4>
+                    <h2 style="margin: 0; font-size: 12px; font-weight: 600;">{fmt(gastos_reais)}</h2>
                 </div>
                 <div style="flex: 1; background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
-                    <h4 style="margin: 0; font-size: 11px; opacity: 0.9;">🐷 Cofrinho</h4>
-                    <h2 style="margin: 0; font-size: 14px; font-weight: 600;">{fmt(cofrinho)}</h2>
+                    <h4 style="margin: 0; font-size: 14px; opacity: 0.9;">🐷 Cofrinho</h4>
+                    <h2 style="margin: 0; font-size: 12px; font-weight: 600;">{fmt(cofrinho)}</h2>
                 </div>
                 <div style="flex: 1; background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ffcc80;">
-                    <h4 style="margin: 0; font-size: 11px; opacity: 0.9;">💵 Extra</h4>
-                    <h2 style="margin: 0; font-size: 14px; font-weight: 600;">{fmt(renda_variavel)}</h2>
+                    <h4 style="margin: 0; font-size: 14px; opacity: 0.9;">💵 Extra</h4>
+                    <h2 style="margin: 0; font-size: 12px; font-weight: 600;">{fmt(renda_variavel)}</h2>
                 </div>
             </div>
             ''', unsafe_allow_html=True)
 
-            st.markdown("---")
+            st.markdown("")
+            st.markdown("")
+            st.markdown("")
 
             # === GRAFICO POR CATEGORIA (incluindo Cofrinho) ===
             st.markdown('<p class="section-title">📊 Gastos por Categoria</p>', unsafe_allow_html=True)
@@ -392,15 +394,15 @@ def main():
 
             # Saldo
             if abs(saldo) < 0.01:
-                st.markdown('<div class="ok-box"><h3 style="font-size: 14px;">✨ Quites!</h3></div>', unsafe_allow_html=True)
+                st.markdown('<div class="ok-box"><h3 style="font-size: 12px;">✨ Quites!</h3></div>', unsafe_allow_html=True)
             else:
-                st.markdown('<p class="section-title" style="font-size: 12px;">💫 Situacao</p>', unsafe_allow_html=True)
+                st.markdown('<p class="section-title" style="font-size: 14px;">💫 Situacao</p>', unsafe_allow_html=True)
                 if saldo > 0:
                     # Outro deve pra mim
-                    st.markdown(f'<div class="ok-box"><h3 style="font-size: 14px;">🤑 {outro} te deve {fmt(saldo)}</h3></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="ok-box"><h3 style="font-size: 12px;">🤑 {outro} te deve {fmt(saldo)}</h3></div>', unsafe_allow_html=True)
                 else:
                     # Eu devo pro outro
-                    st.markdown(f'<div class="{cor_card}"><h4 style="font-size: 11px;">Voce deve pra {outro}</h4><h2 style="font-size: 14px;">{fmt(abs(saldo))}</h2></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="{cor_card}"><h4 style="font-size: 14px;">Voce deve pra {outro}</h4><h2 style="font-size: 12px;">{fmt(abs(saldo))}</h2></div>', unsafe_allow_html=True)
         else:
             st.info("📝 Sem registros ainda. Va em '➕ Novo'!")
 
@@ -753,57 +755,54 @@ def main():
 
     # ========== AMBAS (visao compartilhada) ==========
     elif menu == "👯 Ambas":
-        st.markdown('<p class="page-title">👯 Visao Geral (Ambas)</p>', unsafe_allow_html=True)
+        st.markdown('<p class="page-title">👯 Visao Geral</p>', unsafe_allow_html=True)
 
         df_desp = pd.DataFrame(list(colls["despesas"].find({})))
 
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
             hoje = date.today()
-            mes_atual = df_desp[df_desp["createdAt"].dt.month == hoje.month]
+            mes_atual = df_desp[(df_desp["createdAt"].dt.month == hoje.month) & (df_desp["createdAt"].dt.year == hoje.year)]
 
-            # Gastos do mes
-            st.markdown('<p class="section-title">💸 Gastos este mes</p>', unsafe_allow_html=True)
-            c1, c2 = st.columns(2)
-            with c1:
-                total_su = mes_atual[mes_atual["buyer"] == "Susanna"]["total_value"].sum()
-                st.markdown(f'<div class="su-card"><h4>Susanna</h4><h2>{fmt(total_su)}</h2></div>', unsafe_allow_html=True)
-            with c2:
-                total_pi = mes_atual[mes_atual["buyer"] == "Pietrah"]["total_value"].sum()
-                st.markdown(f'<div class="pi-card"><h4>Pietrah</h4><h2>{fmt(total_pi)}</h2></div>', unsafe_allow_html=True)
+            # Calcula totais
+            total_su = mes_atual[mes_atual["buyer"] == "Susanna"]["total_value"].sum()
+            total_pi = mes_atual[mes_atual["buyer"] == "Pietrah"]["total_value"].sum()
+            total_ambas = total_su + total_pi
 
-            # Graficos por categoria
-            st.markdown('<p class="section-title">📊 Por Categoria</p>', unsafe_allow_html=True)
+            # === CARDS DE GASTOS DO MES ===
+            st.markdown(f'''
+            <div style="display: flex; flex-direction: row; gap: 8px; width: 100%; margin-bottom: 12px;">
+                <div style="flex: 1; background: linear-gradient(135deg, #c2185b 0%, #e91e63 100%); padding: 8px 10px; border-radius: 8px; color: white; border-left: 3px solid #f48fb1;">
+                    <h4 style="margin: 0; font-size: 12px; opacity: 0.9;">⚡ Susanna</h4>
+                    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">{fmt(total_su)}</h2>
+                </div>
+                <div style="flex: 1; background: linear-gradient(135deg, #0277bd 0%, #03a9f4 100%); padding: 8px 10px; border-radius: 8px; color: white; border-left: 3px solid #4fc3f7;">
+                    <h4 style="margin: 0; font-size: 12px; opacity: 0.9;">👩 Pietrah</h4>
+                    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">{fmt(total_pi)}</h2>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
 
-            c1, c2 = st.columns(2)
-            cores_su = ['#e91e63', '#f48fb1', '#f06292', '#ec407a', '#d81b60', '#c2185b', '#ad1457', '#880e4f', '#ff80ab', '#ff4081']
-            cores_pi = ['#03a9f4', '#4fc3f7', '#29b6f6', '#0288d1', '#039be5', '#0277bd', '#01579b', '#81d4fa', '#00bcd4', '#26c6da']
-
-            with c1:
-                su_cat = mes_atual[mes_atual["buyer"] == "Susanna"].groupby("label")["total_value"].sum().reset_index()
-                if not su_cat.empty:
-                    fig_su = px.pie(su_cat, names="label", values="total_value", hole=0.5, color_discrete_sequence=cores_su)
-                    fig_su.update_traces(textposition='inside', textinfo='percent', marker=dict(line=dict(color='#ff80ab', width=1)))
-                    fig_su.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120,
-                                        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white', size=8))
-                    st.plotly_chart(fig_su, use_container_width=True)
-                else:
-                    st.caption("Sem gastos")
-
-            with c2:
-                pi_cat = mes_atual[mes_atual["buyer"] == "Pietrah"].groupby("label")["total_value"].sum().reset_index()
-                if not pi_cat.empty:
-                    fig_pi = px.pie(pi_cat, names="label", values="total_value", hole=0.5, color_discrete_sequence=cores_pi)
-                    fig_pi.update_traces(textposition='inside', textinfo='percent', marker=dict(line=dict(color='#4fc3f7', width=1)))
-                    fig_pi.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0), height=120,
-                                        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white', size=8))
-                    st.plotly_chart(fig_pi, use_container_width=True)
-                else:
-                    st.caption("Sem gastos")
+            # Barra comparativa visual
+            if total_ambas > 0:
+                pct_su = (total_su / total_ambas) * 100
+                pct_pi = (total_pi / total_ambas) * 100
+                st.markdown(f'''
+                <div style="background: rgba(255,255,255,0.1); border-radius: 6px; height: 12px; overflow: hidden; margin-bottom: 8px;">
+                    <div style="display: flex; height: 100%;">
+                        <div style="background: #e91e63; width: {pct_su}%; height: 100%;"></div>
+                        <div style="background: #03a9f4; width: {pct_pi}%; height: 100%;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-bottom: 10px;">
+                    <span style="color: #f48fb1;">{pct_su:.0f}%</span>
+                    <span style="color: #4fc3f7;">{pct_pi:.0f}%</span>
+                </div>
+                ''', unsafe_allow_html=True)
 
             st.markdown("---")
 
-            # Pendencias
+            # === SITUACAO / PENDENCIAS ===
             df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
             su_deve = df_desp[(df_desp["devedor"] == "Susanna") & (df_desp["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
             pi_deve = df_desp[(df_desp["devedor"] == "Pietrah") & (df_desp["status_pendencia"] == "em aberto")]["valor_pendente"].sum()
@@ -815,33 +814,97 @@ def main():
 
             saldo = pi_deve - su_deve
 
-            # Saldo
             if abs(saldo) < 0.01:
-                st.markdown('<div class="ok-box"><h3>✨ Quites!</h3></div>', unsafe_allow_html=True)
+                st.markdown('<div style="background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); padding: 12px; border-radius: 8px; text-align: center;"><h3 style="margin: 0; font-size: 16px; color: white;">✨ Quites!</h3></div>', unsafe_allow_html=True)
             else:
-                st.markdown('<p class="section-title">💫 Pendencias</p>', unsafe_allow_html=True)
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown(f'<div class="su-card"><h4>Susanna deve</h4><h2>{fmt(su_deve)}</h2></div>', unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f'<div class="pi-card"><h4>Pietrah deve</h4><h2>{fmt(pi_deve)}</h2></div>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">💫 Situacao</p>', unsafe_allow_html=True)
 
-                # Resultado final
+                # Cards de pendencias lado a lado
+                st.markdown(f'''
+                <div style="display: flex; flex-direction: row; gap: 8px; width: 100%; margin-bottom: 10px;">
+                    <div style="flex: 1; background: rgba(233,30,99,0.15); padding: 8px; border-radius: 8px; text-align: center; border: 1px solid rgba(233,30,99,0.3);">
+                        <span style="font-size: 10px; color: #f48fb1;">Susanna deve</span>
+                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">{fmt(su_deve)}</h3>
+                    </div>
+                    <div style="flex: 1; background: rgba(3,169,244,0.15); padding: 8px; border-radius: 8px; text-align: center; border: 1px solid rgba(3,169,244,0.3);">
+                        <span style="font-size: 10px; color: #4fc3f7;">Pietrah deve</span>
+                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">{fmt(pi_deve)}</h3>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # Resultado final - quem paga
                 if saldo > 0:
-                    st.markdown(f'<div class="pi-deve"><p>Pietrah paga {fmt(saldo)} p/ Susanna</p></div>', unsafe_allow_html=True)
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, #01579b 0%, #0277bd 100%); padding: 10px; border-radius: 8px; text-align: center;">
+                        <span style="font-size: 10px; color: #81d4fa;">Resultado</span>
+                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">👩 Pietrah paga {fmt(saldo)} p/ Susanna ⚡</h3>
+                    </div>
+                    ''', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="su-deve"><p>Susanna paga {fmt(abs(saldo))} p/ Pietrah</p></div>', unsafe_allow_html=True)
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, #880e4f 0%, #c2185b 100%); padding: 10px; border-radius: 8px; text-align: center;">
+                        <span style="font-size: 10px; color: #f48fb1;">Resultado</span>
+                        <h3 style="margin: 2px 0 0 0; font-size: 14px; color: white;">⚡ Susanna paga {fmt(abs(saldo))} p/ Pietrah 👩</h3>
+                    </div>
+                    ''', unsafe_allow_html=True)
 
-            # Gastos compartilhados
             st.markdown("---")
-            st.markdown('<p class="section-title">👯 Gastos Compartilhados</p>', unsafe_allow_html=True)
 
-            df_nossa = df_desp[df_desp["pagamento_compartilhado"].str.contains("Nossa", na=False)]
-            if not df_nossa.empty:
-                df_nossa_mes = df_nossa[df_nossa["createdAt"].dt.month == hoje.month]
-                total_compartilhado = df_nossa_mes["total_value"].sum()
+            # === TOP CATEGORIAS DE CADA UMA ===
+            st.markdown('<p style="font-size: 12px; text-align: center; margin: 4px 0 8px 0; font-weight: 500;">🏆 Top Categorias</p>', unsafe_allow_html=True)
 
-                st.markdown(f'<div class="info-box"><h2>{fmt(total_compartilhado)}</h2><p>Total compartilhado | Cada: {fmt(total_compartilhado/2)}</p></div>', unsafe_allow_html=True)
+            su_cat = mes_atual[mes_atual["buyer"] == "Susanna"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
+            pi_cat = mes_atual[mes_atual["buyer"] == "Pietrah"].groupby("label")["total_value"].sum().sort_values(ascending=False).head(3)
+
+            # Susanna top 3
+            if not su_cat.empty:
+                st.markdown('<span style="font-size: 10px; color: #f48fb1; font-weight: 500;">⚡ Susanna</span>', unsafe_allow_html=True)
+                for cat, val in su_cat.items():
+                    pct = (val / total_su * 100) if total_su > 0 else 0
+                    st.markdown(f'''
+                    <div style="margin-bottom: 4px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #ccc;">
+                            <span>{cat}</span><span>{fmt(val)}</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 3px; height: 6px; overflow: hidden;">
+                            <div style="background: #e91e63; width: {pct}%; height: 100%;"></div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+            st.markdown('<div style="height: 8px;"></div>', unsafe_allow_html=True)
+
+            # Pietrah top 3
+            if not pi_cat.empty:
+                st.markdown('<span style="font-size: 10px; color: #4fc3f7; font-weight: 500;">👩 Pietrah</span>', unsafe_allow_html=True)
+                for cat, val in pi_cat.items():
+                    pct = (val / total_pi * 100) if total_pi > 0 else 0
+                    st.markdown(f'''
+                    <div style="margin-bottom: 4px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #ccc;">
+                            <span>{cat}</span><span>{fmt(val)}</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 3px; height: 6px; overflow: hidden;">
+                            <div style="background: #03a9f4; width: {pct}%; height: 100%;"></div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+            # === GASTOS DIVIDIDOS ===
+            df_dividido = df_desp[df_desp["pagamento_compartilhado"].str.contains("Dividido", na=False)]
+            if not df_dividido.empty:
+                df_dividido_mes = df_dividido[(df_dividido["createdAt"].dt.month == hoje.month) & (df_dividido["createdAt"].dt.year == hoje.year)]
+                if not df_dividido_mes.empty:
+                    total_dividido = df_dividido_mes["total_value"].sum()
+                    st.markdown("---")
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%); padding: 10px; border-radius: 8px; text-align: center;">
+                        <span style="font-size: 10px; color: #ce93d8;">👯 Gastos Divididos</span>
+                        <h3 style="margin: 2px 0 0 0; font-size: 16px; color: white;">{fmt(total_dividido)}</h3>
+                        <span style="font-size: 9px; color: #ce93d8;">Cada uma: {fmt(total_dividido/2)}</span>
+                    </div>
+                    ''', unsafe_allow_html=True)
         else:
             st.info("📝 Sem gastos ainda.")
 
