@@ -527,7 +527,7 @@ def show_user_selector():
 
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-    if st.button("👩 Pietrah", use_container_width=True, type="secondary"):
+    if st.button("🔱 Pietrah", use_container_width=True, type="secondary"):
         st.session_state.usuario_atual = "Pietrah"
         st.rerun()
 
