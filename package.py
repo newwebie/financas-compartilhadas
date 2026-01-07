@@ -263,7 +263,7 @@ def show_user_badge():
 
     st.markdown(f"""
     <div style="text-align: center; padding: 10px; background: {cor}20; border-radius: 8px; margin-bottom: 10px;">
-        <span style="font-size: 20px;">👩</span>
+        <span style="font-size: 20px;">⚡</span>
         <p style="margin: 5px 0 0 0; font-weight: bold; color: {cor};">{user}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -288,7 +288,7 @@ def main():
     with st.sidebar:
         show_user_badge()
         st.markdown("### Menu")
-        menu = st.radio("", ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "💸 Emprestimo", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao"], label_visibility="collapsed")
+        menu = st.radio("", ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "🎯 Metas", "👯 Ambas", "📊 Relatorio", "📈 Evolucao"], label_visibility="collapsed")
 
     # ========== INICIO ==========
     if menu == "🏠 Inicio":
@@ -322,16 +322,16 @@ def main():
             st.markdown(f'''
             <div style="display: flex; flex-direction: row; gap: 6px; width: 100%;">
                 <div style="flex: 1; background: {cor_gastos}; padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid {borda_gastos};">
-                    <h4 style="margin: 0; font-size: 8px; opacity: 0.9;">💸 Gastos</h4>
-                    <h2 style="margin: 0; font-size: 11px; font-weight: 600;">{fmt(gastos_reais)}</h2>
+                    <h4 style="margin: 0; font-size: 11px; opacity: 0.9;">💸 Gastos</h4>
+                    <h2 style="margin: 0; font-size: 14px; font-weight: 600;">{fmt(gastos_reais)}</h2>
                 </div>
                 <div style="flex: 1; background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #81c784;">
-                    <h4 style="margin: 0; font-size: 8px; opacity: 0.9;">🐷 Cofrinho</h4>
-                    <h2 style="margin: 0; font-size: 11px; font-weight: 600;">{fmt(cofrinho)}</h2>
+                    <h4 style="margin: 0; font-size: 11px; opacity: 0.9;">🐷 Cofrinho</h4>
+                    <h2 style="margin: 0; font-size: 14px; font-weight: 600;">{fmt(cofrinho)}</h2>
                 </div>
                 <div style="flex: 1; background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 4px 6px; border-radius: 6px; color: white; border-left: 2px solid #ffcc80;">
-                    <h4 style="margin: 0; font-size: 8px; opacity: 0.9;">💵 Renda Extra</h4>
-                    <h2 style="margin: 0; font-size: 11px; font-weight: 600;">{fmt(renda_variavel)}</h2>
+                    <h4 style="margin: 0; font-size: 11px; opacity: 0.9;">💵 Extra</h4>
+                    <h2 style="margin: 0; font-size: 14px; font-weight: 600;">{fmt(renda_variavel)}</h2>
                 </div>
             </div>
             ''', unsafe_allow_html=True)
@@ -392,15 +392,15 @@ def main():
 
             # Saldo
             if abs(saldo) < 0.01:
-                st.markdown('<div class="ok-box"><h3>✨ Quites!</h3></div>', unsafe_allow_html=True)
+                st.markdown('<div class="ok-box"><h3 style="font-size: 14px;">✨ Quites!</h3></div>', unsafe_allow_html=True)
             else:
-                st.markdown('<p class="section-title">💫 Situacao</p>', unsafe_allow_html=True)
+                st.markdown('<p class="section-title" style="font-size: 12px;">💫 Situacao</p>', unsafe_allow_html=True)
                 if saldo > 0:
                     # Outro deve pra mim
-                    st.markdown(f'<div class="ok-box"><h3>🤑 {outro} te deve {fmt(saldo)}</h3></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="ok-box"><h3 style="font-size: 14px;">🤑 {outro} te deve {fmt(saldo)}</h3></div>', unsafe_allow_html=True)
                 else:
                     # Eu devo pro outro
-                    st.markdown(f'<div class="{cor_card}"><h4>Voce deve pra {outro}</h4><h2>{fmt(abs(saldo))}</h2></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="{cor_card}"><h4 style="font-size: 11px;">Voce deve pra {outro}</h4><h2 style="font-size: 14px;">{fmt(abs(saldo))}</h2></div>', unsafe_allow_html=True)
         else:
             st.info("📝 Sem registros ainda. Va em '➕ Novo'!")
 
@@ -704,53 +704,6 @@ def main():
                         st.rerun()
         else:
             st.caption("Nenhum emprestimo a terceiros")
-
-    # ========== EMPRESTIMOS ==========
-    elif menu == "💸 Emprestimo":
-        st.markdown('<p class="page-title">💸 Emprestimos</p>', unsafe_allow_html=True)
-
-        with st.expander("➕ Novo Emprestimo", expanded=False):
-            with st.form("form_emprestimo", clear_on_submit=True):
-                st.markdown(f"**💰 Ajudando uma pobre**")
-                valor_emp = st.number_input("💵 Valor", min_value=0.01, value=10.00, format="%.2f")
-                motivo = st.text_area("📝 Motivo / Observacao", placeholder="Ex: Emprestei pra pagar o Uber")
-
-                if st.form_submit_button("✅ Registrar", use_container_width=True):
-                    colls["emprestimos"].insert_one({
-                        "credor": user, "devedor": outro, "valor": valor_emp,
-                        "motivo": motivo, "status": "em aberto", "createdAt": datetime.now()
-                    })
-                    st.success("✅ Emprestimo registrado!")
-                    st.rerun()
-
-        df_emp = pd.DataFrame(list(colls["emprestimos"].find({})))
-
-        if not df_emp.empty:
-            # Filtrar apenas emprestimos relacionados ao usuario
-            df_emp = df_emp[(df_emp["credor"] == user) | (df_emp["devedor"] == user)]
-
-            if not df_emp.empty:
-                df_emp["_id"] = df_emp["_id"].astype(str)
-                df_emp["createdAt"] = pd.to_datetime(df_emp["createdAt"])
-                df_emp["mes_ano"] = df_emp["createdAt"].dt.to_period("M")
-
-                meses = sorted(df_emp["mes_ano"].unique(), reverse=True)
-
-                for mes in meses:
-                    df_mes = df_emp[df_emp["mes_ano"] == mes]
-                    total_mes = df_mes["valor"].sum()
-
-                    with st.expander(f"📅 {mes.strftime('%B %Y')} | {fmt(total_mes)}"):
-                        for _, row in df_mes.iterrows():
-                            status_emoji = "🔴" if row["status"] == "em aberto" else "✅"
-                            relacao = "emprestei" if row["credor"] == user else "devo"
-                            st.markdown(f"{status_emoji} **{relacao.upper()}**: {fmt(row['valor'])}")
-                            st.caption(f"📝 {row.get('motivo', 'Sem descricao')} | 🕐 {row['createdAt'].strftime('%d/%m/%Y %H:%M')}")
-                            st.markdown("---")
-            else:
-                st.info("📝 Nenhum emprestimo seu registrado.")
-        else:
-            st.info("📝 Nenhum emprestimo registrado.")
 
     # ========== METAS ==========
     elif menu == "🎯 Metas":
