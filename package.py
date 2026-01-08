@@ -7,8 +7,59 @@ import plotly.express as px
 import plotly.graph_objects as go
 import certifi
 import smtplib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+
+# Mapeamento de categorias: display (com emoji) -> banco (sem emoji)
+CATEGORIAS_DISPLAY = ["🍔 Comida", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "🐷 Cofrinho", "💵 Renda Variavel", "📦 Outros"]
+CATEGORIAS_BANCO = ["Comida", "Combustivel", "Automoveis", "Bebidas", "Vestuario", "Saude", "Lazer", "Contas", "Boa pra familia", "Cofrinho", "Renda Variavel", "Outros"]
+
+# Mapeamento display -> banco
+CAT_PARA_BANCO = dict(zip(CATEGORIAS_DISPLAY, CATEGORIAS_BANCO))
+# Mapeamento banco -> display
+CAT_PARA_DISPLAY = dict(zip(CATEGORIAS_BANCO, CATEGORIAS_DISPLAY))
+
+
+def remover_emoji(texto):
+    """Remove emojis de uma string"""
+    if not texto:
+        return texto
+    # Remove emojis usando regex
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        u"\U0001f926-\U0001f937"
+        u"\U00010000-\U0010ffff"
+        u"\u2640-\u2642"
+        u"\u2600-\u2B55"
+        u"\u200d"
+        u"\u23cf"
+        u"\u23e9"
+        u"\u231a"
+        u"\ufe0f"
+        u"\u3030"
+        u"\u2066"
+        u"\u2067"
+        u"\u2068"
+        u"\u2069"
+        "]+", flags=re.UNICODE)
+    return emoji_pattern.sub('', texto).strip()
+
+
+def categoria_para_banco(cat_display):
+    """Converte categoria com emoji para versao sem emoji (para salvar no banco)"""
+    return CAT_PARA_BANCO.get(cat_display, remover_emoji(cat_display))
+
+
+def categoria_para_display(cat_banco):
+    """Converte categoria do banco para versao com emoji (para exibir)"""
+    return CAT_PARA_DISPLAY.get(cat_banco, cat_banco)
 
 def enviar_email_abastecimento(quem_abasteceu, veiculo, valor):
     """Envia email notificando o outro usuario sobre abastecimento"""
@@ -837,6 +888,8 @@ def main():
             user_cat = user_cat_series.reset_index()
             user_cat.columns = ["label", "total_value"]
             user_cat = user_cat.sort_values("total_value", ascending=False)
+            # Adiciona emojis para exibicao
+            user_cat["label_display"] = user_cat["label"].apply(categoria_para_display)
 
             if not user_cat.empty:
                 # Cores bem distintas para mobile
@@ -856,7 +909,7 @@ def main():
                     barras_html += f'''
                     <div style="margin-bottom: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                            <span style="font-size: 12px; color: white;">{row["label"]}</span>
+                            <span style="font-size: 12px; color: white;">{row["label_display"]}</span>
                             <span style="font-size: 11px; color: #aaa;">{fmt(row["total_value"])} ({pct_total:.1f}%)</span>
                         </div>
                         <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
@@ -967,7 +1020,7 @@ def main():
 
             if moto_submitted:
                 colls["despesas"].insert_one({
-                    "label": "⛽ Combustivel",
+                    "label": "Combustivel",
                     "buyer": user,
                     "item": "Moto",
                     "description": "",
@@ -976,7 +1029,7 @@ def main():
                     "payment_method": pagamento_moto,
                     "installment": 0,
                     "createdAt": datetime.now(),
-                    "pagamento_compartilhado": "👤 Pra mim",
+                    "pagamento_compartilhado": "Pra mim",
                     "tem_pendencia": False,
                     "devedor": None,
                     "valor_pendente": None,
@@ -998,7 +1051,7 @@ def main():
 
             if carro_submitted:
                 colls["despesas"].insert_one({
-                    "label": "⛽ Combustivel",
+                    "label": "Combustivel",
                     "buyer": user,
                     "item": "Carro",
                     "description": "",
@@ -1007,7 +1060,7 @@ def main():
                     "payment_method": pagamento_carro,
                     "installment": 0,
                     "createdAt": datetime.now(),
-                    "pagamento_compartilhado": "👤 Pra mim",
+                    "pagamento_compartilhado": "Pra mim",
                     "tem_pendencia": False,
                     "devedor": None,
                     "valor_pendente": None,
@@ -1028,7 +1081,7 @@ def main():
             st.markdown('<p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">💸 Registrar Gasto</p>', unsafe_allow_html=True)
             with st.form("form_novo_gasto", clear_on_submit=True):
 
-                label = st.selectbox("🏷️ Categoria", ["🍔 Comida", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "🐷 Cofrinho", "💵 Renda Variavel", "📦 Outros"])
+                label_display = st.selectbox("🏷️ Categoria", CATEGORIAS_DISPLAY)
                 item = st.text_input("📝 Item")
                 description = st.text_input("💬 Descricao")
 
@@ -1036,7 +1089,7 @@ def main():
                 preco = st.number_input("💵 Preco", min_value=0.01, value=1.00, format="%.2f")
 
                 pagamento = st.selectbox("💳 Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"])
-                tipo_despesa = st.selectbox("🤝 Tipo de compra", ["👤 Pra mim", "👯 Dividido (me deve metade)", "🎁 Pra outra (me deve tudo)"])
+                tipo_despesa_display = st.selectbox("🤝 Tipo de compra", ["👤 Pra mim", "👯 Dividido (me deve metade)", "🎁 Pra outra (me deve tudo)"])
                 parcelas = st.number_input("📅 Parcelas", min_value=0, value=0)
 
                 submitted = st.form_submit_button("✅ Salvar Gasto", use_container_width=True)
@@ -1044,12 +1097,15 @@ def main():
             if submitted:
                 try:
                     valor_total = quantidade * preco
+                    label = categoria_para_banco(label_display)  # Converte para versao sem emoji
+                    # Converte tipo de despesa para salvar sem emoji
+                    tipo_despesa = remover_emoji(tipo_despesa_display)
 
                     pend = {"tem_pendencia": False, "devedor": None, "valor_pendente": None, "status_pendencia": None}
 
-                    if "Dividido" in tipo_despesa:
+                    if "Dividido" in tipo_despesa_display:
                         pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": round(valor_total / 2, 2), "status_pendencia": "em aberto"}
-                    elif "Pra outra" in tipo_despesa:
+                    elif "Pra outra" in tipo_despesa_display:
                         pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": valor_total, "status_pendencia": "em aberto"}
 
                     doc = {
@@ -1133,13 +1189,14 @@ def main():
                 valor_conta = st.number_input("💵 Valor", min_value=0.01, value=100.00, format="%.2f")
                 dia_vencimento = st.number_input("📅 Dia vencimento", min_value=1, max_value=31, value=10)
                 responsavel = st.selectbox("👤 Responsavel", [user, outro, "Dividido"])
-                categoria_conta = st.selectbox("🏷️ Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"])
+                categoria_conta_display = st.selectbox("🏷️ Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"])
                 cartao_credito = st.checkbox("💳 Conta no cartao de credito", value=False, help="Marque se essa conta e paga no cartao de credito")
                 obs_conta = st.text_input("💬 Observacao")
 
                 cf_submitted = st.form_submit_button("✅ Cadastrar", use_container_width=True)
 
             if cf_submitted:
+                categoria_conta = remover_emoji(categoria_conta_display)
                 conta_fixa = {
                     "nome": nome_conta, "valor": valor_conta, "dia_vencimento": dia_vencimento,
                     "responsavel": responsavel, "categoria": categoria_conta, "observacao": obs_conta,
@@ -1416,7 +1473,7 @@ def main():
                             )
                             # Registra como despesa (dinheiro saiu da conta corrente pra poupanca)
                             colls["despesas"].insert_one({
-                                "label": "🏦 Poupanca",
+                                "label": "Poupanca",
                                 "buyer": user,
                                 "item": f"Devolucao - {div['credor']}",
                                 "description": div.get("descricao", ""),
@@ -1425,7 +1482,7 @@ def main():
                                 "payment_method": "Debito",
                                 "installment": 0,
                                 "createdAt": datetime.now(),
-                                "pagamento_compartilhado": "👤 Pra mim",
+                                "pagamento_compartilhado": "Pra mim",
                                 "tem_pendencia": False,
                                 "devedor": None,
                                 "valor_pendente": None,
@@ -1518,8 +1575,9 @@ def main():
                                     "data": datetime.now()
                                 })
                                 # Registra como despesa
+                                cat_conta = categoria_para_banco(conta["categoria"]) if conta.get("categoria") else "Contas"
                                 colls["despesas"].insert_one({
-                                    "label": conta["categoria"] if conta["categoria"] in ["📄 Contas", "💊 Saude", "📦 Outros"] else "📄 Contas",
+                                    "label": cat_conta,
                                     "buyer": user,
                                     "item": conta["nome"],
                                     "description": "Conta fixa mensal",
@@ -1528,7 +1586,7 @@ def main():
                                     "payment_method": "Debito",
                                     "installment": 0,
                                     "createdAt": datetime.now(),
-                                    "pagamento_compartilhado": "👤 Pra mim",
+                                    "pagamento_compartilhado": "Pra mim",
                                     "tem_pendencia": False,
                                     "devedor": None,
                                     "valor_pendente": None,
@@ -1552,10 +1610,11 @@ def main():
 
         with st.expander("➕ Criar Nova Meta", expanded=False):
             with st.form("form_meta", clear_on_submit=True):
-                categoria_meta = st.selectbox("🏷️ Categoria", ["🍔 Comida", "🛒 Mercado", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "📦 Outros", "💰 Total Geral"])
+                categoria_meta_display = st.selectbox("🏷️ Categoria", ["🍔 Comida", "🛒 Mercado", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "📦 Outros", "💰 Total Geral"])
                 valor_meta = st.number_input("💵 Limite mensal", min_value=1.00, value=500.00, format="%.2f")
 
                 if st.form_submit_button("✅ Criar Meta", use_container_width=True):
+                    categoria_meta = remover_emoji(categoria_meta_display)
                     colls["metas"].insert_one({"categoria": categoria_meta, "pessoa": user, "limite": valor_meta, "ativo": True, "createdAt": datetime.now()})
                     limpar_cache_dados()
                     st.success("✅ Meta criada!")
@@ -1950,7 +2009,7 @@ def main():
                 medalhas = ["🥇", "🥈", "🥉"]
                 for i, (_, compra) in enumerate(top_compras.iterrows()):
                     item = compra.get("item", "-")
-                    categoria = compra.get("label", "-")
+                    categoria = categoria_para_display(compra.get("label", "-"))
                     valor = compra["total_value"]
                     data_compra = compra["createdAt"].strftime("%d/%m")
 
@@ -2041,8 +2100,8 @@ def main():
         if not df_desp.empty:
             df_desp["createdAt"] = pd.to_datetime(df_desp["createdAt"])
 
-            # Filtra apenas combustivel
-            df_combustivel = df_desp[(df_desp["label"] == "⛽ Combustivel") | (df_desp["label"].str.contains("Combustivel", na=False))]
+            # Filtra apenas combustivel (aceita com ou sem emoji para compatibilidade)
+            df_combustivel = df_desp[df_desp["label"].str.contains("Combustivel", na=False)]
 
             if not df_combustivel.empty:
                 # Cards de ultimo abastecimento
@@ -2238,9 +2297,10 @@ def main():
                         cor_cat = "#888"
                         seta = "→"
 
+                    cat_display = categoria_para_display(comp["cat"])
                     st.markdown(f'''
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 13px; color: #ccc;">{comp["cat"]}</span>
+                        <span style="font-size: 13px; color: #ccc;">{cat_display}</span>
                         <span style="font-size: 12px;">
                             <span style="color: #888;">{fmt(comp["anterior"])}</span>
                             <span style="color: {cor_cat};"> {seta} </span>
@@ -2353,10 +2413,11 @@ def main():
                 # Top 5 categorias historico
                 st.markdown('<p class="section-title">🏷️ Top 5 Categorias (historico)</p>', unsafe_allow_html=True)
                 top_cats = df_user_gastos.groupby("label")["total_value"].sum().nlargest(5).index.tolist()
-                df_top = df_user_gastos[df_user_gastos["label"].isin(top_cats)]
-                evolucao_cat = df_top.groupby(["mes", "label"])["total_value"].sum().reset_index()
+                df_top = df_user_gastos[df_user_gastos["label"].isin(top_cats)].copy()
+                df_top["label_display"] = df_top["label"].apply(categoria_para_display)
+                evolucao_cat = df_top.groupby(["mes", "label_display"])["total_value"].sum().reset_index()
 
-                fig3 = px.area(evolucao_cat, x="mes", y="total_value", color="label")
+                fig3 = px.area(evolucao_cat, x="mes", y="total_value", color="label_display")
                 fig3.update_layout(height=120, margin=dict(t=0, b=0, l=0, r=0),
                                   paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                                   font=dict(color='white', size=8), legend=dict(orientation="h", y=1.2, font=dict(size=6)), showlegend=True)
