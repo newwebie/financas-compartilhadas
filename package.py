@@ -2561,44 +2561,45 @@ def main():
                         st.caption(f"{len(df_filtrado)} registros encontrados")
 
                         # Lista de registros
-                        for i, (_, desp) in enumerate(df_filtrado.head(50).iterrows()):
+                        for _, desp in df_filtrado.head(50).iterrows():
+                            desp_id = str(desp["_id"])
                             data_str = desp["createdAt"].strftime("%d/%m/%Y")
                             cat_display = categoria_para_display(desp.get("label", "-"))
 
                             with st.expander(f"{cat_display} - {desp.get('item', '-')} | {fmt(desp['total_value'])} | {data_str}"):
-                                with st.form(f"edit_desp_{i}"):
-                                    new_label = st.selectbox("Categoria", CATEGORIAS_DISPLAY, index=CATEGORIAS_DISPLAY.index(cat_display) if cat_display in CATEGORIAS_DISPLAY else 0, key=f"cat_{i}")
-                                    new_item = st.text_input("Item", value=desp.get("item", ""), key=f"item_{i}")
-                                    new_desc = st.text_input("Descricao", value=desp.get("description", ""), key=f"desc_{i}")
-                                    new_valor = st.number_input("Valor", value=float(desp["total_value"]), min_value=0.01, key=f"valor_{i}")
-                                    new_data = st.date_input("Data", value=desp["createdAt"].date(), key=f"data_{i}")
-                                    new_pagamento = st.selectbox("Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"], index=["VR", "Debito", "Credito", "Pix", "Dinheiro"].index(desp.get("payment_method", "Debito")) if desp.get("payment_method") in ["VR", "Debito", "Credito", "Pix", "Dinheiro"] else 0, key=f"pag_{i}")
+                                with st.form(f"edit_desp_{desp_id}"):
+                                    new_label = st.selectbox("Categoria", CATEGORIAS_DISPLAY, index=CATEGORIAS_DISPLAY.index(cat_display) if cat_display in CATEGORIAS_DISPLAY else 0, key=f"cat_{desp_id}")
+                                    new_item = st.text_input("Item", value=desp.get("item", ""), key=f"item_{desp_id}")
+                                    new_desc = st.text_input("Descricao", value=desp.get("description", ""), key=f"desc_{desp_id}")
+                                    new_valor = st.number_input("Valor", value=float(desp["total_value"]), min_value=0.01, key=f"valor_{desp_id}")
+                                    new_data = st.date_input("Data", value=desp["createdAt"].date(), key=f"data_{desp_id}")
+                                    new_pagamento = st.selectbox("Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"], index=["VR", "Debito", "Credito", "Pix", "Dinheiro"].index(desp.get("payment_method", "Debito")) if desp.get("payment_method") in ["VR", "Debito", "Credito", "Pix", "Dinheiro"] else 0, key=f"pag_{desp_id}")
 
-                                    col_btn1, col_btn2 = st.columns(2)
-                                    with col_btn1:
-                                        if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                            colls["despesas"].update_one(
-                                                {"_id": desp["_id"]},
-                                                {"$set": {
-                                                    "label": categoria_para_banco(new_label),
-                                                    "item": new_item,
-                                                    "description": new_desc,
-                                                    "total_value": new_valor,
-                                                    "createdAt": datetime.combine(new_data, datetime.min.time()),
-                                                    "payment_method": new_pagamento
-                                                }}
-                                            )
-                                            limpar_cache_dados()
-                                            st.success("✅ Atualizado!")
-                                            st.rerun()
-                                    with col_btn2:
-                                        if st.form_submit_button("🗑️ Excluir", use_container_width=True):
-                                            # Remove despesa e quitacoes relacionadas
-                                            colls["quitacoes"].delete_many({"despesa_id": desp["_id"]})
-                                            colls["despesas"].delete_one({"_id": desp["_id"]})
-                                            limpar_cache_dados()
-                                            st.success("🗑️ Excluido!")
-                                            st.rerun()
+                                    btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
+                                    btn_excluir = st.form_submit_button("🗑️ Excluir", use_container_width=True, type="secondary")
+
+                                    if btn_salvar:
+                                        colls["despesas"].update_one(
+                                            {"_id": desp["_id"]},
+                                            {"$set": {
+                                                "label": categoria_para_banco(new_label),
+                                                "item": new_item,
+                                                "description": new_desc,
+                                                "total_value": new_valor,
+                                                "createdAt": datetime.combine(new_data, datetime.min.time()),
+                                                "payment_method": new_pagamento
+                                            }}
+                                        )
+                                        limpar_cache_dados()
+                                        st.success("✅ Atualizado!")
+                                        st.rerun()
+                                    if btn_excluir:
+                                        # Remove despesa e quitacoes relacionadas
+                                        colls["quitacoes"].delete_many({"despesa_id": desp["_id"]})
+                                        colls["despesas"].delete_one({"_id": desp["_id"]})
+                                        limpar_cache_dados()
+                                        st.success("🗑️ Excluido!")
+                                        st.rerun()
                     else:
                         st.info("Nenhuma despesa encontrada")
                 else:
@@ -2630,40 +2631,41 @@ def main():
 
                         st.caption(f"{len(df_filtrado)} registros encontrados")
 
-                        for i, (_, comb) in enumerate(df_filtrado.head(50).iterrows()):
+                        for _, comb in df_filtrado.head(50).iterrows():
+                            comb_id = str(comb["_id"])
                             data_str = comb["createdAt"].strftime("%d/%m/%Y")
                             veiculo = comb.get("item", "-")
                             quem = comb.get("buyer", "-")
                             veiculo_icon = "🏍️" if "moto" in veiculo.lower() else "🚗"
 
                             with st.expander(f"{veiculo_icon} {veiculo} - {quem} | {fmt(comb['total_value'])} | {data_str}"):
-                                with st.form(f"edit_comb_{i}"):
-                                    new_veiculo = st.selectbox("Veiculo", ["Moto", "Carro"], index=0 if "moto" in veiculo.lower() else 1, key=f"comb_veic_{i}")
-                                    new_valor = st.number_input("Valor", value=float(comb["total_value"]), min_value=0.01, key=f"comb_valor_{i}")
-                                    new_data = st.date_input("Data", value=comb["createdAt"].date(), key=f"comb_data_{i}")
-                                    new_pagamento = st.selectbox("Pagamento", ["Debito", "Credito", "Pix", "Dinheiro"], index=["Debito", "Credito", "Pix", "Dinheiro"].index(comb.get("payment_method", "Debito")) if comb.get("payment_method") in ["Debito", "Credito", "Pix", "Dinheiro"] else 0, key=f"comb_pag_{i}")
+                                with st.form(f"edit_comb_{comb_id}"):
+                                    new_veiculo = st.selectbox("Veiculo", ["Moto", "Carro"], index=0 if "moto" in veiculo.lower() else 1, key=f"comb_veic_{comb_id}")
+                                    new_valor = st.number_input("Valor", value=float(comb["total_value"]), min_value=0.01, key=f"comb_valor_{comb_id}")
+                                    new_data = st.date_input("Data", value=comb["createdAt"].date(), key=f"comb_data_{comb_id}")
+                                    new_pagamento = st.selectbox("Pagamento", ["Debito", "Credito", "Pix", "Dinheiro"], index=["Debito", "Credito", "Pix", "Dinheiro"].index(comb.get("payment_method", "Debito")) if comb.get("payment_method") in ["Debito", "Credito", "Pix", "Dinheiro"] else 0, key=f"comb_pag_{comb_id}")
 
-                                    col_btn1, col_btn2 = st.columns(2)
-                                    with col_btn1:
-                                        if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                            colls["despesas"].update_one(
-                                                {"_id": comb["_id"]},
-                                                {"$set": {
-                                                    "item": new_veiculo,
-                                                    "total_value": new_valor,
-                                                    "createdAt": datetime.combine(new_data, datetime.min.time()),
-                                                    "payment_method": new_pagamento
-                                                }}
-                                            )
-                                            limpar_cache_dados()
-                                            st.success("✅ Atualizado!")
-                                            st.rerun()
-                                    with col_btn2:
-                                        if st.form_submit_button("🗑️ Excluir", use_container_width=True):
-                                            colls["despesas"].delete_one({"_id": comb["_id"]})
-                                            limpar_cache_dados()
-                                            st.success("🗑️ Excluido!")
-                                            st.rerun()
+                                    btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
+                                    btn_excluir = st.form_submit_button("🗑️ Excluir", use_container_width=True, type="secondary")
+
+                                    if btn_salvar:
+                                        colls["despesas"].update_one(
+                                            {"_id": comb["_id"]},
+                                            {"$set": {
+                                                "item": new_veiculo,
+                                                "total_value": new_valor,
+                                                "createdAt": datetime.combine(new_data, datetime.min.time()),
+                                                "payment_method": new_pagamento
+                                            }}
+                                        )
+                                        limpar_cache_dados()
+                                        st.success("✅ Atualizado!")
+                                        st.rerun()
+                                    if btn_excluir:
+                                        colls["despesas"].delete_one({"_id": comb["_id"]})
+                                        limpar_cache_dados()
+                                        st.success("🗑️ Excluido!")
+                                        st.rerun()
                     else:
                         st.info("Nenhum abastecimento encontrado")
                 else:
@@ -2695,48 +2697,49 @@ def main():
 
                     st.caption(f"{len(df_filtrado)} registros encontrados")
 
-                    for i, (_, emp) in enumerate(df_filtrado.iterrows()):
+                    for _, emp in df_filtrado.iterrows():
+                        emp_id = str(emp["_id"])
                         data_str = emp["data_emprestimo"].strftime("%d/%m/%Y")
                         status_icon = "🟢" if emp["status"] == "quitado" else "🟡"
 
                         with st.expander(f"{status_icon} {emp.get('devedor', '-')} | {fmt(emp['valor'])} | {data_str}"):
-                            with st.form(f"edit_emp_{i}"):
-                                new_devedor = st.text_input("Devedor", value=emp.get("devedor", ""), key=f"emp_dev_{i}")
-                                new_descricao = st.text_input("Descricao", value=emp.get("descricao", ""), key=f"emp_desc_{i}")
-                                new_valor = st.number_input("Valor", value=float(emp["valor"]), min_value=0.01, key=f"emp_valor_{i}")
-                                new_data_emp = st.date_input("Data emprestimo", value=emp["data_emprestimo"].date(), key=f"emp_data_{i}")
-                                new_data_dev = st.date_input("Data devolucao", value=emp["data_devolucao"].date() if pd.notna(emp.get("data_devolucao")) else date.today() + timedelta(days=30), key=f"emp_dev_data_{i}")
-                                new_status = st.selectbox("Status", ["em aberto", "quitado"], index=0 if emp["status"] == "em aberto" else 1, key=f"emp_status_{i}")
+                            with st.form(f"edit_emp_{emp_id}"):
+                                new_devedor = st.text_input("Devedor", value=emp.get("devedor", ""), key=f"emp_dev_{emp_id}")
+                                new_descricao = st.text_input("Descricao", value=emp.get("descricao", ""), key=f"emp_desc_{emp_id}")
+                                new_valor = st.number_input("Valor", value=float(emp["valor"]), min_value=0.01, key=f"emp_valor_{emp_id}")
+                                new_data_emp = st.date_input("Data emprestimo", value=emp["data_emprestimo"].date(), key=f"emp_data_{emp_id}")
+                                new_data_dev = st.date_input("Data devolucao", value=emp["data_devolucao"].date() if pd.notna(emp.get("data_devolucao")) else date.today() + timedelta(days=30), key=f"emp_dev_data_{emp_id}")
+                                new_status = st.selectbox("Status", ["em aberto", "quitado"], index=0 if emp["status"] == "em aberto" else 1, key=f"emp_status_{emp_id}")
 
-                                col_btn1, col_btn2 = st.columns(2)
-                                with col_btn1:
-                                    if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                        # Se mudou data_devolucao, reseta o lembrete
-                                        update_data = {
-                                            "devedor": new_devedor,
-                                            "descricao": new_descricao,
-                                            "valor": new_valor,
-                                            "data_emprestimo": datetime.combine(new_data_emp, datetime.min.time()),
-                                            "data_devolucao": datetime.combine(new_data_dev, datetime.min.time()),
-                                            "status": new_status
-                                        }
-                                        # Reseta lembrete se mudou a data de devolucao
-                                        if emp.get("data_devolucao") and new_data_dev != emp["data_devolucao"].date():
-                                            update_data["lembrete_enviado"] = False
+                                btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
+                                btn_excluir = st.form_submit_button("🗑️ Excluir", use_container_width=True, type="secondary")
 
-                                        colls["emprestimos_terceiros"].update_one(
-                                            {"_id": emp["_id"]},
-                                            {"$set": update_data}
-                                        )
-                                        limpar_cache_dados()
-                                        st.success("✅ Atualizado!")
-                                        st.rerun()
-                                with col_btn2:
-                                    if st.form_submit_button("🗑️ Excluir", use_container_width=True):
-                                        colls["emprestimos_terceiros"].delete_one({"_id": emp["_id"]})
-                                        limpar_cache_dados()
-                                        st.success("🗑️ Excluido!")
-                                        st.rerun()
+                                if btn_salvar:
+                                    # Se mudou data_devolucao, reseta o lembrete
+                                    update_data = {
+                                        "devedor": new_devedor,
+                                        "descricao": new_descricao,
+                                        "valor": new_valor,
+                                        "data_emprestimo": datetime.combine(new_data_emp, datetime.min.time()),
+                                        "data_devolucao": datetime.combine(new_data_dev, datetime.min.time()),
+                                        "status": new_status
+                                    }
+                                    # Reseta lembrete se mudou a data de devolucao
+                                    if emp.get("data_devolucao") and new_data_dev != emp["data_devolucao"].date():
+                                        update_data["lembrete_enviado"] = False
+
+                                    colls["emprestimos_terceiros"].update_one(
+                                        {"_id": emp["_id"]},
+                                        {"$set": update_data}
+                                    )
+                                    limpar_cache_dados()
+                                    st.success("✅ Atualizado!")
+                                    st.rerun()
+                                if btn_excluir:
+                                    colls["emprestimos_terceiros"].delete_one({"_id": emp["_id"]})
+                                    limpar_cache_dados()
+                                    st.success("🗑️ Excluido!")
+                                    st.rerun()
                 else:
                     st.info("Nenhum emprestimo encontrado")
 
@@ -2766,43 +2769,44 @@ def main():
 
                     st.caption(f"{len(df_filtrado)} registros encontrados")
 
-                    for i, (_, div) in enumerate(df_filtrado.iterrows()):
+                    for _, div in df_filtrado.iterrows():
+                        div_id = str(div["_id"])
                         data_str = div["data_emprestimo"].strftime("%d/%m/%Y")
                         status_icon = "🟢" if div["status"] == "quitado" else "🔴"
                         tipo_div = "🏦" if div.get("emprestimo_conta") else "👤"
 
                         with st.expander(f"{status_icon} {tipo_div} {div.get('credor', '-')} | {fmt(div['valor'])} | {data_str}"):
-                            with st.form(f"edit_div_{i}"):
-                                new_credor = st.text_input("Credor", value=div.get("credor", ""), key=f"div_cred_{i}")
-                                new_descricao = st.text_input("Descricao", value=div.get("descricao", ""), key=f"div_desc_{i}")
-                                new_valor = st.number_input("Valor", value=float(div["valor"]), min_value=0.01, key=f"div_valor_{i}")
-                                new_data = st.date_input("Data emprestimo", value=div["data_emprestimo"].date(), key=f"div_data_{i}")
-                                new_emprestimo_conta = st.checkbox("Emprestimo da minha conta", value=div.get("emprestimo_conta", False), key=f"div_conta_{i}")
-                                new_status = st.selectbox("Status", ["em aberto", "quitado"], index=0 if div["status"] == "em aberto" else 1, key=f"div_status_{i}")
+                            with st.form(f"edit_div_{div_id}"):
+                                new_credor = st.text_input("Credor", value=div.get("credor", ""), key=f"div_cred_{div_id}")
+                                new_descricao = st.text_input("Descricao", value=div.get("descricao", ""), key=f"div_desc_{div_id}")
+                                new_valor = st.number_input("Valor", value=float(div["valor"]), min_value=0.01, key=f"div_valor_{div_id}")
+                                new_data = st.date_input("Data emprestimo", value=div["data_emprestimo"].date(), key=f"div_data_{div_id}")
+                                new_emprestimo_conta = st.checkbox("Emprestimo da minha conta", value=div.get("emprestimo_conta", False), key=f"div_conta_{div_id}")
+                                new_status = st.selectbox("Status", ["em aberto", "quitado"], index=0 if div["status"] == "em aberto" else 1, key=f"div_status_{div_id}")
 
-                                col_btn1, col_btn2 = st.columns(2)
-                                with col_btn1:
-                                    if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                        colls["dividas_terceiros"].update_one(
-                                            {"_id": div["_id"]},
-                                            {"$set": {
-                                                "credor": new_credor,
-                                                "descricao": new_descricao,
-                                                "valor": new_valor,
-                                                "data_emprestimo": datetime.combine(new_data, datetime.min.time()),
-                                                "emprestimo_conta": new_emprestimo_conta,
-                                                "status": new_status
-                                            }}
-                                        )
-                                        limpar_cache_dados()
-                                        st.success("✅ Atualizado!")
-                                        st.rerun()
-                                with col_btn2:
-                                    if st.form_submit_button("🗑️ Excluir", use_container_width=True):
-                                        colls["dividas_terceiros"].delete_one({"_id": div["_id"]})
-                                        limpar_cache_dados()
-                                        st.success("🗑️ Excluido!")
-                                        st.rerun()
+                                btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
+                                btn_excluir = st.form_submit_button("🗑️ Excluir", use_container_width=True, type="secondary")
+
+                                if btn_salvar:
+                                    colls["dividas_terceiros"].update_one(
+                                        {"_id": div["_id"]},
+                                        {"$set": {
+                                            "credor": new_credor,
+                                            "descricao": new_descricao,
+                                            "valor": new_valor,
+                                            "data_emprestimo": datetime.combine(new_data, datetime.min.time()),
+                                            "emprestimo_conta": new_emprestimo_conta,
+                                            "status": new_status
+                                        }}
+                                    )
+                                    limpar_cache_dados()
+                                    st.success("✅ Atualizado!")
+                                    st.rerun()
+                                if btn_excluir:
+                                    colls["dividas_terceiros"].delete_one({"_id": div["_id"]})
+                                    limpar_cache_dados()
+                                    st.success("🗑️ Excluido!")
+                                    st.rerun()
                 else:
                     st.info("Nenhuma divida encontrada")
 
@@ -2823,47 +2827,48 @@ def main():
 
                     st.caption(f"{len(contas_filtradas)} contas encontradas")
 
-                    for i, conta in enumerate(contas_filtradas):
+                    for conta in contas_filtradas:
+                        conta_id = str(conta["_id"])
                         cat_display = categoria_para_display(conta.get("categoria", "Contas"))
                         cartao_icon = "💳" if conta.get("cartao_credito") else "📄"
 
                         with st.expander(f"{cartao_icon} {conta.get('nome', '-')} | {fmt(conta['valor'])} | Dia {conta.get('dia_vencimento', '-')}"):
-                            with st.form(f"edit_cf_{i}"):
-                                new_nome = st.text_input("Nome", value=conta.get("nome", ""), key=f"cf_nome_{i}")
-                                new_valor = st.number_input("Valor", value=float(conta["valor"]), min_value=0.01, key=f"cf_valor_{i}")
-                                new_dia = st.number_input("Dia vencimento", value=int(conta.get("dia_vencimento", 10)), min_value=1, max_value=31, key=f"cf_dia_{i}")
-                                new_resp = st.selectbox("Responsavel", [user, outro, "Dividido"], index=[user, outro, "Dividido"].index(conta.get("responsavel", user)) if conta.get("responsavel") in [user, outro, "Dividido"] else 0, key=f"cf_resp_{i}")
-                                new_cat = st.selectbox("Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"], index=["📄 Contas", "💊 Saude", "📦 Outros"].index(cat_display) if cat_display in ["📄 Contas", "💊 Saude", "📦 Outros"] else 0, key=f"cf_cat_{i}")
-                                new_cartao = st.checkbox("Conta no cartao de credito", value=conta.get("cartao_credito", False), key=f"cf_cartao_{i}")
-                                new_obs = st.text_input("Observacao", value=conta.get("observacao", ""), key=f"cf_obs_{i}")
+                            with st.form(f"edit_cf_{conta_id}"):
+                                new_nome = st.text_input("Nome", value=conta.get("nome", ""), key=f"cf_nome_{conta_id}")
+                                new_valor = st.number_input("Valor", value=float(conta["valor"]), min_value=0.01, key=f"cf_valor_{conta_id}")
+                                new_dia = st.number_input("Dia vencimento", value=int(conta.get("dia_vencimento", 10)), min_value=1, max_value=31, key=f"cf_dia_{conta_id}")
+                                new_resp = st.selectbox("Responsavel", [user, outro, "Dividido"], index=[user, outro, "Dividido"].index(conta.get("responsavel", user)) if conta.get("responsavel") in [user, outro, "Dividido"] else 0, key=f"cf_resp_{conta_id}")
+                                new_cat = st.selectbox("Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"], index=["📄 Contas", "💊 Saude", "📦 Outros"].index(cat_display) if cat_display in ["📄 Contas", "💊 Saude", "📦 Outros"] else 0, key=f"cf_cat_{conta_id}")
+                                new_cartao = st.checkbox("Conta no cartao de credito", value=conta.get("cartao_credito", False), key=f"cf_cartao_{conta_id}")
+                                new_obs = st.text_input("Observacao", value=conta.get("observacao", ""), key=f"cf_obs_{conta_id}")
 
-                                col_btn1, col_btn2 = st.columns(2)
-                                with col_btn1:
-                                    if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                        colls["contas_fixas"].update_one(
-                                            {"_id": conta["_id"]},
-                                            {"$set": {
-                                                "nome": new_nome,
-                                                "valor": new_valor,
-                                                "dia_vencimento": new_dia,
-                                                "responsavel": new_resp,
-                                                "categoria": remover_emoji(new_cat),
-                                                "cartao_credito": new_cartao,
-                                                "observacao": new_obs
-                                            }}
-                                        )
-                                        limpar_cache_dados()
-                                        st.success("✅ Atualizado!")
-                                        st.rerun()
-                                with col_btn2:
-                                    if st.form_submit_button("🗑️ Desativar", use_container_width=True):
-                                        colls["contas_fixas"].update_one(
-                                            {"_id": conta["_id"]},
-                                            {"$set": {"ativo": False}}
-                                        )
-                                        limpar_cache_dados()
-                                        st.success("🗑️ Desativada!")
-                                        st.rerun()
+                                btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
+                                btn_desativar = st.form_submit_button("🗑️ Desativar", use_container_width=True, type="secondary")
+
+                                if btn_salvar:
+                                    colls["contas_fixas"].update_one(
+                                        {"_id": conta["_id"]},
+                                        {"$set": {
+                                            "nome": new_nome,
+                                            "valor": new_valor,
+                                            "dia_vencimento": new_dia,
+                                            "responsavel": new_resp,
+                                            "categoria": remover_emoji(new_cat),
+                                            "cartao_credito": new_cartao,
+                                            "observacao": new_obs
+                                        }}
+                                    )
+                                    limpar_cache_dados()
+                                    st.success("✅ Atualizado!")
+                                    st.rerun()
+                                if btn_desativar:
+                                    colls["contas_fixas"].update_one(
+                                        {"_id": conta["_id"]},
+                                        {"$set": {"ativo": False}}
+                                    )
+                                    limpar_cache_dados()
+                                    st.success("🗑️ Desativada!")
+                                    st.rerun()
                 else:
                     st.info("Nenhuma conta fixa encontrada")
 
@@ -2876,36 +2881,37 @@ def main():
                 if metas:
                     st.caption(f"{len(metas)} metas encontradas")
 
-                    for i, meta in enumerate(metas):
+                    for meta in metas:
+                        meta_id = str(meta["_id"])
                         cat_display = categoria_para_display(meta.get("categoria", "-"))
 
                         with st.expander(f"🎯 {cat_display} | Limite: {fmt(meta['limite'])}"):
-                            with st.form(f"edit_meta_{i}"):
-                                new_cat = st.selectbox("Categoria", ["🍔 Comida", "🛒 Mercado", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "📦 Outros", "💰 Total Geral"], key=f"meta_cat_{i}")
-                                new_limite = st.number_input("Limite mensal", value=float(meta["limite"]), min_value=1.00, key=f"meta_limite_{i}")
+                            with st.form(f"edit_meta_{meta_id}"):
+                                new_cat = st.selectbox("Categoria", ["🍔 Comida", "🛒 Mercado", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "📦 Outros", "💰 Total Geral"], key=f"meta_cat_{meta_id}")
+                                new_limite = st.number_input("Limite mensal", value=float(meta["limite"]), min_value=1.00, key=f"meta_limite_{meta_id}")
 
-                                col_btn1, col_btn2 = st.columns(2)
-                                with col_btn1:
-                                    if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                        colls["metas"].update_one(
-                                            {"_id": meta["_id"]},
-                                            {"$set": {
-                                                "categoria": remover_emoji(new_cat),
-                                                "limite": new_limite
-                                            }}
-                                        )
-                                        limpar_cache_dados()
-                                        st.success("✅ Atualizado!")
-                                        st.rerun()
-                                with col_btn2:
-                                    if st.form_submit_button("🗑️ Excluir", use_container_width=True):
-                                        colls["metas"].update_one(
-                                            {"_id": meta["_id"]},
-                                            {"$set": {"ativo": False}}
-                                        )
-                                        limpar_cache_dados()
-                                        st.success("🗑️ Excluida!")
-                                        st.rerun()
+                                btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
+                                btn_excluir = st.form_submit_button("🗑️ Excluir", use_container_width=True, type="secondary")
+
+                                if btn_salvar:
+                                    colls["metas"].update_one(
+                                        {"_id": meta["_id"]},
+                                        {"$set": {
+                                            "categoria": remover_emoji(new_cat),
+                                            "limite": new_limite
+                                        }}
+                                    )
+                                    limpar_cache_dados()
+                                    st.success("✅ Atualizado!")
+                                    st.rerun()
+                                if btn_excluir:
+                                    colls["metas"].update_one(
+                                        {"_id": meta["_id"]},
+                                        {"$set": {"ativo": False}}
+                                    )
+                                    limpar_cache_dados()
+                                    st.success("🗑️ Excluida!")
+                                    st.rerun()
                 else:
                     st.info("Nenhuma meta encontrada")
 
