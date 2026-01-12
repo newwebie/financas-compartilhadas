@@ -2501,33 +2501,30 @@ def main():
         # Botoes para selecionar tipo de registro
         st.markdown('<p class="section-title">Selecione o tipo de registro</p>', unsafe_allow_html=True)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💸 Despesas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "despesas" else "secondary"):
-                st.session_state.edit_tipo = "despesas"
-                st.session_state.edit_id = None
-                st.rerun()
-            if st.button("🤝 Emprestei", use_container_width=True, type="primary" if st.session_state.edit_tipo == "emprestimos_terceiros" else "secondary"):
-                st.session_state.edit_tipo = "emprestimos_terceiros"
-                st.session_state.edit_id = None
-                st.rerun()
-            if st.button("📋 Contas Fixas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "contas_fixas" else "secondary"):
-                st.session_state.edit_tipo = "contas_fixas"
-                st.session_state.edit_id = None
-                st.rerun()
-        with col2:
-            if st.button("💳 Minhas Dividas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "dividas_terceiros" else "secondary"):
-                st.session_state.edit_tipo = "dividas_terceiros"
-                st.session_state.edit_id = None
-                st.rerun()
-            if st.button("⛽ Combustivel", use_container_width=True, type="primary" if st.session_state.edit_tipo == "combustivel" else "secondary"):
-                st.session_state.edit_tipo = "combustivel"
-                st.session_state.edit_id = None
-                st.rerun()
-            if st.button("🎯 Metas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "metas" else "secondary"):
-                st.session_state.edit_tipo = "metas"
-                st.session_state.edit_id = None
-                st.rerun()
+        if st.button("💸 Despesas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "despesas" else "secondary"):
+            st.session_state.edit_tipo = "despesas"
+            st.session_state.edit_id = None
+            st.rerun()
+        if st.button("⛽ Combustivel", use_container_width=True, type="primary" if st.session_state.edit_tipo == "combustivel" else "secondary"):
+            st.session_state.edit_tipo = "combustivel"
+            st.session_state.edit_id = None
+            st.rerun()
+        if st.button("🤝 Emprestei", use_container_width=True, type="primary" if st.session_state.edit_tipo == "emprestimos_terceiros" else "secondary"):
+            st.session_state.edit_tipo = "emprestimos_terceiros"
+            st.session_state.edit_id = None
+            st.rerun()
+        if st.button("💳 Minhas Dividas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "dividas_terceiros" else "secondary"):
+            st.session_state.edit_tipo = "dividas_terceiros"
+            st.session_state.edit_id = None
+            st.rerun()
+        if st.button("📋 Contas Fixas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "contas_fixas" else "secondary"):
+            st.session_state.edit_tipo = "contas_fixas"
+            st.session_state.edit_id = None
+            st.rerun()
+        if st.button("🎯 Metas", use_container_width=True, type="primary" if st.session_state.edit_tipo == "metas" else "secondary"):
+            st.session_state.edit_tipo = "metas"
+            st.session_state.edit_id = None
+            st.rerun()
 
         st.markdown("---")
 
@@ -2546,12 +2543,9 @@ def main():
 
                     if not df_user_desp.empty:
                         # Filtros
-                        col_filtro1, col_filtro2 = st.columns(2)
-                        with col_filtro1:
-                            categorias_unicas = ["Todas"] + sorted(df_user_desp["label"].dropna().unique().tolist())
-                            filtro_cat = st.selectbox("🏷️ Categoria", categorias_unicas, key="filtro_desp_cat")
-                        with col_filtro2:
-                            filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=30), key="filtro_desp_data", format="DD/MM/YYYY")
+                        categorias_unicas = ["Todas"] + sorted(df_user_desp["label"].dropna().unique().tolist())
+                        filtro_cat = st.selectbox("🏷️ Categoria", categorias_unicas, key="filtro_desp_cat")
+                        filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=30), key="filtro_desp_data", format="DD/MM/YYYY")
 
                         # Aplica filtros
                         df_filtrado = df_user_desp[df_user_desp["createdAt"].dt.date >= filtro_data]
@@ -2572,7 +2566,7 @@ def main():
                                     new_item = st.text_input("Item", value=desp.get("item", ""), key=f"item_{desp_id}")
                                     new_desc = st.text_input("Descricao", value=desp.get("description", ""), key=f"desc_{desp_id}")
                                     new_valor = st.number_input("Valor", value=float(desp["total_value"]), min_value=0.01, key=f"valor_{desp_id}")
-                                    new_data = st.date_input("Data", value=desp["createdAt"].date(), key=f"data_{desp_id}")
+                                    new_data = st.date_input("Data", value=desp["createdAt"].date(), key=f"data_{desp_id}", format="DD/MM/YYYY")
                                     new_pagamento = st.selectbox("Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"], index=["VR", "Debito", "Credito", "Pix", "Dinheiro"].index(desp.get("payment_method", "Debito")) if desp.get("payment_method") in ["VR", "Debito", "Credito", "Pix", "Dinheiro"] else 0, key=f"pag_{desp_id}")
 
                                     btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
@@ -2617,12 +2611,9 @@ def main():
 
                     if not df_comb.empty:
                         # Filtros
-                        col_filtro1, col_filtro2 = st.columns(2)
-                        with col_filtro1:
-                            veiculos = ["Todos", "Moto", "Carro"]
-                            filtro_veiculo = st.selectbox("🚗 Veiculo", veiculos, key="filtro_comb_veiculo")
-                        with col_filtro2:
-                            filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=90), key="filtro_comb_data")
+                        veiculos = ["Todos", "Moto", "Carro"]
+                        filtro_veiculo = st.selectbox("🚗 Veiculo", veiculos, key="filtro_comb_veiculo")
+                        filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=90), key="filtro_comb_data")
 
                         # Aplica filtros
                         df_filtrado = df_comb[df_comb["createdAt"].dt.date >= filtro_data]
@@ -2683,12 +2674,9 @@ def main():
                     df_emp = df_emp.sort_values("data_emprestimo", ascending=False)
 
                     # Filtros
-                    col_filtro1, col_filtro2 = st.columns(2)
-                    with col_filtro1:
-                        status_opcoes = ["Todos", "em aberto", "quitado"]
-                        filtro_status = st.selectbox("📋 Status", status_opcoes, key="filtro_emp_status")
-                    with col_filtro2:
-                        filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=90), key="filtro_emp_data")
+                    status_opcoes = ["Todos", "em aberto", "quitado"]
+                    filtro_status = st.selectbox("📋 Status", status_opcoes, key="filtro_emp_status")
+                    filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=90), key="filtro_emp_data")
 
                     # Aplica filtros
                     df_filtrado = df_emp[df_emp["data_emprestimo"].dt.date >= filtro_data]
@@ -2755,12 +2743,9 @@ def main():
                     df_div = df_div.sort_values("data_emprestimo", ascending=False)
 
                     # Filtros
-                    col_filtro1, col_filtro2 = st.columns(2)
-                    with col_filtro1:
-                        status_opcoes = ["Todos", "em aberto", "quitado"]
-                        filtro_status = st.selectbox("📋 Status", status_opcoes, key="filtro_div_status")
-                    with col_filtro2:
-                        filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=90), key="filtro_div_data")
+                    status_opcoes = ["Todos", "em aberto", "quitado"]
+                    filtro_status = st.selectbox("📋 Status", status_opcoes, key="filtro_div_status")
+                    filtro_data = st.date_input("📅 A partir de", value=date.today() - timedelta(days=90), key="filtro_div_data")
 
                     # Aplica filtros
                     df_filtrado = df_div[df_div["data_emprestimo"].dt.date >= filtro_data]
