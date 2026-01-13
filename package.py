@@ -20,6 +20,8 @@ CATEGORIAS_BANCO = ["Comida", "Combustivel", "Automoveis", "Bebidas", "Vestuario
 CAT_PARA_BANCO = dict(zip(CATEGORIAS_DISPLAY, CATEGORIAS_BANCO))
 # Mapeamento banco -> display
 CAT_PARA_DISPLAY = dict(zip(CATEGORIAS_BANCO, CATEGORIAS_DISPLAY))
+# Adiciona categoria especial para emprestimos
+CAT_PARA_DISPLAY["Emprestei"] = "🤝 Emprestei"
 
 
 def remover_emoji(texto):
@@ -852,8 +854,13 @@ def main():
             st.markdown('<p class="section-title">📊 Gastos por Categoria</p>', unsafe_allow_html=True)
 
             # Exclui apenas Renda Variavel do grafico
-            gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)]
-            user_cat_series = gastos_para_grafico.groupby("label")["total_value"].sum() if not gastos_para_grafico.empty else pd.Series(dtype=float)
+            gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)].copy()
+            # Normaliza labels removendo emojis para agrupar corretamente
+            if not gastos_para_grafico.empty:
+                gastos_para_grafico["label_normalizado"] = gastos_para_grafico["label"].apply(remover_emoji)
+                user_cat_series = gastos_para_grafico.groupby("label_normalizado")["total_value"].sum()
+            else:
+                user_cat_series = pd.Series(dtype=float)
 
             # Adiciona contas fixas de credito ao grafico
             if not df_contas_fixas_inicio.empty:
@@ -861,14 +868,14 @@ def main():
                     if conta.get("cartao_credito", False):
                         valor_meu = conta["valor"] if conta["responsavel"] == user else (conta["valor"] / 2 if conta["responsavel"] == "Dividido" else 0)
                         if valor_meu > 0:
-                            cat_original = conta.get("categoria", "📄 Contas")
+                            cat_original = remover_emoji(str(conta.get("categoria", "Contas")))
                             # Mapeia categoria da conta fixa para categoria de despesa
-                            if "Saude" in str(cat_original) or "saude" in str(cat_original).lower():
-                                cat_label = "💊 Saude"
-                            elif cat_original in ["📄 Contas", "💊 Saude", "📦 Outros"]:
+                            if "Saude" in cat_original or "saude" in cat_original.lower():
+                                cat_label = "Saude"
+                            elif cat_original in ["Contas", "Saude", "Outros"]:
                                 cat_label = cat_original
                             else:
-                                cat_label = "📄 Contas"
+                                cat_label = "Contas"
 
                             if cat_label in user_cat_series.index:
                                 user_cat_series[cat_label] += valor_meu
@@ -880,10 +887,10 @@ def main():
             if not df_emprestimos_terceiros.empty:
                 total_emprestei = df_emprestimos_terceiros["valor"].sum()
                 if total_emprestei > 0:
-                    if "🤝 Emprestei" in user_cat_series.index:
-                        user_cat_series["🤝 Emprestei"] += total_emprestei
+                    if "Emprestei" in user_cat_series.index:
+                        user_cat_series["Emprestei"] += total_emprestei
                     else:
-                        user_cat_series["🤝 Emprestei"] = total_emprestei
+                        user_cat_series["Emprestei"] = total_emprestei
 
             user_cat = user_cat_series.reset_index()
             user_cat.columns = ["label", "total_value"]
