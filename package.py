@@ -797,10 +797,42 @@ def main():
             st.markdown(f'<p style="font-size: 10px; text-align: center; color: #888; margin-bottom: 8px;">Fatura: {data_inicio.strftime("%d/%m")} a {data_fim.strftime("%d/%m")}</p>', unsafe_allow_html=True)
 
             # === DASHBOARD - 3 CARDS ===
-            # Card 1: Gastos (tudo que JA FOI gasto - credito, parcelamentos, contas fixas PAGAS e contas fixas no credito)
-            # Inclui despesas com origem="conta_fixa" porque significa que foi paga
+            # Card 1: Gastos (considera parcela atual e desconta valor que outra pessoa deve)
             df_gastos_card = meus_registros[~meus_registros["label"].str.contains("Cofrinho|Renda Variavel", na=False)] if not meus_registros.empty else pd.DataFrame()
-            gastos_reais = df_gastos_card["total_value"].sum() if not df_gastos_card.empty else 0
+
+            gastos_reais = 0
+            gastos_detalhes = []  # Para debug
+            if not df_gastos_card.empty:
+                for _, desp in df_gastos_card.iterrows():
+                    valor_total = desp["total_value"]
+                    parcelas = desp.get("installment", 1) or 1
+                    tem_pendencia = desp.get("tem_pendencia", False)
+                    valor_pendente = desp.get("valor_pendente", 0) or 0
+
+                    # Se parcelado, considera só valor da parcela
+                    if parcelas > 1:
+                        valor_considerar = valor_total / parcelas
+                    else:
+                        valor_considerar = valor_total
+
+                    # Se compra conjunta, desconta o que a outra pessoa deve
+                    if tem_pendencia and valor_pendente > 0:
+                        # valor_pendente já é o valor que a outra deve (metade ou total)
+                        # Se parcelado, a pendência também é proporcional à parcela
+                        if parcelas > 1:
+                            valor_pendente_parcela = valor_pendente / parcelas
+                        else:
+                            valor_pendente_parcela = valor_pendente
+                        valor_considerar = valor_considerar - valor_pendente_parcela
+
+                    gastos_reais += valor_considerar
+                    gastos_detalhes.append({
+                        "item": desp.get("item", "-"),
+                        "total": valor_total,
+                        "parcelas": parcelas,
+                        "pendencia": valor_pendente,
+                        "valor_real": valor_considerar
+                    })
 
             # Soma contas fixas no credito (ja estao comprometidas automaticamente)
             contas_fixas_credito_inicio = 0
@@ -855,12 +887,36 @@ def main():
 
             # Exclui apenas Renda Variavel do grafico
             gastos_para_grafico = meus_registros[~meus_registros["label"].str.contains("Renda Variavel", na=False)].copy()
-            # Normaliza labels removendo emojis para agrupar corretamente
+
+            # Calcula valor real considerando parcelas e pendencias
+            user_cat_series = pd.Series(dtype=float)
             if not gastos_para_grafico.empty:
-                gastos_para_grafico["label_normalizado"] = gastos_para_grafico["label"].apply(remover_emoji)
-                user_cat_series = gastos_para_grafico.groupby("label_normalizado")["total_value"].sum()
-            else:
-                user_cat_series = pd.Series(dtype=float)
+                for _, desp in gastos_para_grafico.iterrows():
+                    cat_label = remover_emoji(str(desp.get("label", "Outros")))
+                    valor_total = desp["total_value"]
+                    parcelas = desp.get("installment", 1) or 1
+                    tem_pendencia = desp.get("tem_pendencia", False)
+                    valor_pendente = desp.get("valor_pendente", 0) or 0
+
+                    # Se parcelado, considera só valor da parcela
+                    if parcelas > 1:
+                        valor_considerar = valor_total / parcelas
+                    else:
+                        valor_considerar = valor_total
+
+                    # Se compra conjunta, desconta o que a outra pessoa deve
+                    if tem_pendencia and valor_pendente > 0:
+                        if parcelas > 1:
+                            valor_pendente_parcela = valor_pendente / parcelas
+                        else:
+                            valor_pendente_parcela = valor_pendente
+                        valor_considerar = valor_considerar - valor_pendente_parcela
+
+                    # Adiciona ao series por categoria
+                    if cat_label in user_cat_series.index:
+                        user_cat_series[cat_label] += valor_considerar
+                    else:
+                        user_cat_series[cat_label] = valor_considerar
 
             # Adiciona contas fixas de credito ao grafico
             if not df_contas_fixas_inicio.empty:
