@@ -13,8 +13,8 @@ from email.mime.multipart import MIMEMultipart
 
 
 # Mapeamento de categorias: display (com emoji) -> banco (sem emoji)
-CATEGORIAS_DISPLAY = ["🍔 Comida", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "🐷 Cofrinho", "💵 Renda Variavel", "📦 Outros"]
-CATEGORIAS_BANCO = ["Comida", "Combustivel", "Automoveis", "Bebidas", "Vestuario", "Saude", "Lazer", "Contas", "Boa pra familia", "Cofrinho", "Renda Variavel", "Outros"]
+CATEGORIAS_DISPLAY = ["🍔 Comida", "⛽ Combustivel", "🚗 Automoveis", "🍺 Bebidas", "👗 Vestuario", "💊 Saude", "🎮 Lazer", "📄 Contas", "👨‍👩‍👧 Boa pra familia", "🐷 Cofrinho", "💵 Renda Variavel", "💇🏾‍♀️ Trancas", "🔮 Taro", "📦 Outros"]
+CATEGORIAS_BANCO = ["Comida", "Combustivel", "Automoveis", "Bebidas", "Vestuario", "Saude", "Lazer", "Contas", "Boa pra familia", "Cofrinho", "Renda Variavel", "Trancas", "Taro", "Outros"]
 
 # Mapeamento display -> banco
 CAT_PARA_BANCO = dict(zip(CATEGORIAS_DISPLAY, CATEGORIAS_BANCO))
