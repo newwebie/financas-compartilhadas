@@ -741,7 +741,7 @@ def main():
         if "menu_selecionado" not in st.session_state:
             st.session_state.menu_selecionado = "🏠 Inicio"
 
-        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "📊 Relatorio", "⛽", "🎯 Metas", "👯 Ambas", "📈 Evolucao", "✏️ Editar", "⚙️ Config"]
+        menu_opcoes = ["🏠 Inicio", "➕ Novo", "🤝 Acerto", "📊 Relatorio", "⛽", "🎯 Metas", "📄 Extrato", "👯 Ambas", "📈 Evolucao", "✏️ Editar", "⚙️ Config"]
 
         for opcao in menu_opcoes:
             tipo_btn = "primary" if st.session_state.menu_selecionado == opcao else "secondary"
@@ -2217,30 +2217,116 @@ def main():
 
                 st.markdown("---")
 
-                # Historico completo
-                st.markdown('<p class="section-title" style="font-size: 14px;">📜 Historico</p>', unsafe_allow_html=True)
+                # Estatisticas por pessoa
+                st.markdown('<p class="section-title" style="font-size: 14px;">📊 Estatisticas</p>', unsafe_allow_html=True)
+
+                # Conta abastecimentos por pessoa e veiculo
+                df_moto_stats = df_combustivel[df_combustivel["item"].str.lower().str.contains("moto", na=False)]
+                df_carro_stats = df_combustivel[df_combustivel["item"].str.lower().str.contains("carro", na=False)]
+
+                # Pietrah
+                pietrah_moto = len(df_moto_stats[df_moto_stats["buyer"] == "Pietrah"]) if not df_moto_stats.empty else 0
+                pietrah_carro = len(df_carro_stats[df_carro_stats["buyer"] == "Pietrah"]) if not df_carro_stats.empty else 0
+
+                # Susanna
+                susanna_moto = len(df_moto_stats[df_moto_stats["buyer"] == "Susanna"]) if not df_moto_stats.empty else 0
+                susanna_carro = len(df_carro_stats[df_carro_stats["buyer"] == "Susanna"]) if not df_carro_stats.empty else 0
+
+                col_pi, col_su = st.columns(2)
+
+                with col_pi:
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, #0277bd 0%, #03a9f4 100%); padding: 10px; border-radius: 8px; border-left: 3px solid #4fc3f7;">
+                        <div style="font-size: 14px; font-weight: 600; color: white; text-align: center; margin-bottom: 8px;">Pietrah</div>
+                        <div style="display: flex; justify-content: space-around; align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.8);">🏍️ Moto</div>
+                                <div style="font-size: 18px; font-weight: 600; color: white;">{pietrah_moto}x</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.8);">🚗 Carro</div>
+                                <div style="font-size: 18px; font-weight: 600; color: white;">{pietrah_carro}x</div>
+                            </div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                with col_su:
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, #c2185b 0%, #e91e63 100%); padding: 10px; border-radius: 8px; border-left: 3px solid #f48fb1;">
+                        <div style="font-size: 14px; font-weight: 600; color: white; text-align: center; margin-bottom: 8px;">Susanna</div>
+                        <div style="display: flex; justify-content: space-around; align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.8);">🏍️ Moto</div>
+                                <div style="font-size: 18px; font-weight: 600; color: white;">{susanna_moto}x</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.8);">🚗 Carro</div>
+                                <div style="font-size: 18px; font-weight: 600; color: white;">{susanna_carro}x</div>
+                            </div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # Historico - ultimos 5 de cada
+                st.markdown('<p class="section-title" style="font-size: 14px;">📜 Ultimos 5 Abastecimentos</p>', unsafe_allow_html=True)
 
                 df_combustivel_sorted = df_combustivel.sort_values("createdAt", ascending=False)
 
-                for _, abast in df_combustivel_sorted.iterrows():
-                    abast_user = abast["buyer"]
-                    abast_data = abast["createdAt"].strftime("%d/%m/%Y")
-                    abast_valor = abast["total_value"]
-                    abast_tipo = abast.get("item", "Veiculo")
-                    abast_pag = abast.get("payment_method", "-")
+                # Separa abastecimentos por veiculo e pega ultimos 5
+                df_moto_hist = df_combustivel_sorted[df_combustivel_sorted["item"].str.lower().str.contains("moto", na=False)].head(5)
+                df_carro_hist = df_combustivel_sorted[df_combustivel_sorted["item"].str.lower().str.contains("carro", na=False)].head(5)
 
-                    cor_abast = "#e91e63" if abast_user == "Susanna" else "#03a9f4"
-                    emoji_veiculo = "🏍️" if "moto" in str(abast_tipo).lower() else "🚗"
+                # Cria duas colunas
+                col_moto, col_carro = st.columns(2)
 
-                    st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid {cor_abast};">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <span style="font-size: 14px; color: white;">{emoji_veiculo} {abast_tipo}</span><br>
-                                <span style="font-size: 11px; color: #aaa;">{abast_user} | {abast_data} | {abast_pag}</span>
-                            </div>
-                            <div style="font-size: 14px; font-weight: 600; color: white;">{fmt(abast_valor)}</div>
-                        </div>
-                    </div>''', unsafe_allow_html=True)
+                with col_moto:
+                    st.markdown('<p style="font-size: 12px; font-weight: 600; text-align: center; margin-bottom: 8px;">🏍️ Moto</p>', unsafe_allow_html=True)
+
+                    if not df_moto_hist.empty:
+                        for _, abast in df_moto_hist.iterrows():
+                            abast_user = abast["buyer"]
+                            abast_data = abast["createdAt"].strftime("%d/%m/%Y")
+                            abast_valor = abast["total_value"]
+                            abast_pag = abast.get("payment_method", "-")
+
+                            cor_abast = "#e91e63" if abast_user == "Susanna" else "#03a9f4"
+
+                            st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid {cor_abast};">
+                                <div style="display: flex; flex-direction: column;">
+                                    <div style="font-size: 13px; font-weight: 600; color: white; margin-bottom: 4px;">{fmt(abast_valor)}</div>
+                                    <div style="font-size: 10px; color: #aaa;">{abast_user}</div>
+                                    <div style="font-size: 10px; color: #aaa;">{abast_data}</div>
+                                    <div style="font-size: 10px; color: #aaa;">{abast_pag}</div>
+                                </div>
+                            </div>''', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<p style="font-size: 11px; color: #666; text-align: center;">Nenhum abastecimento</p>', unsafe_allow_html=True)
+
+                with col_carro:
+                    st.markdown('<p style="font-size: 12px; font-weight: 600; text-align: center; margin-bottom: 8px;">🚗 Carro</p>', unsafe_allow_html=True)
+
+                    if not df_carro_hist.empty:
+                        for _, abast in df_carro_hist.iterrows():
+                            abast_user = abast["buyer"]
+                            abast_data = abast["createdAt"].strftime("%d/%m/%Y")
+                            abast_valor = abast["total_value"]
+                            abast_pag = abast.get("payment_method", "-")
+
+                            cor_abast = "#e91e63" if abast_user == "Susanna" else "#03a9f4"
+
+                            st.markdown(f'''<div style="background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid {cor_abast};">
+                                <div style="display: flex; flex-direction: column;">
+                                    <div style="font-size: 13px; font-weight: 600; color: white; margin-bottom: 4px;">{fmt(abast_valor)}</div>
+                                    <div style="font-size: 10px; color: #aaa;">{abast_user}</div>
+                                    <div style="font-size: 10px; color: #aaa;">{abast_data}</div>
+                                    <div style="font-size: 10px; color: #aaa;">{abast_pag}</div>
+                                </div>
+                            </div>''', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<p style="font-size: 11px; color: #666; text-align: center;">Nenhum abastecimento</p>', unsafe_allow_html=True)
             else:
                 st.info("⛽ Nenhum abastecimento registrado ainda.")
         else:
@@ -2492,6 +2578,270 @@ def main():
         else:
             st.info("📝 Nenhum gasto registrado.")
 
+    # ========== EXTRATO ==========
+    elif menu == "📄 Extrato":
+        st.markdown('<p class="page-title"></p>', unsafe_allow_html=True)
+
+        # Carrega dados
+        df = pd.DataFrame(carregar_despesas(colls))
+        df_emp_terc = pd.DataFrame(carregar_emprestimos_terceiros(colls, user))
+        df_contas_fixas_extrato = pd.DataFrame(carregar_contas_fixas(colls))
+
+        if df.empty:
+            st.info("📝 Nenhum gasto registrado ainda.")
+        else:
+            df["createdAt"] = pd.to_datetime(df["createdAt"])
+
+            # Seletor de mes/ano
+            st.markdown('<p class="section-title">📅 Selecione o periodo</p>', unsafe_allow_html=True)
+
+            col1, col2 = st.columns(2)
+
+            # Lista de meses e anos disponiveis
+            hoje = date.today()
+            anos = list(range(2024, hoje.year + 2))  # Meses desde 2024 ate ano que vem
+            meses = ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+
+            with col1:
+                mes_selecionado = st.selectbox("Mês", meses, index=hoje.month - 1, key="extrato_mes")
+            with col2:
+                ano_selecionado = st.selectbox("Ano", anos, index=anos.index(hoje.year) if hoje.year in anos else 0, key="extrato_ano")
+
+            # Converte mes selecionado para numero
+            mes_num = meses.index(mes_selecionado) + 1
+
+            # Busca periodo da fatura para o mes/ano selecionado
+            fechamento_dia = get_fechamento_mes(colls, ano_selecionado, mes_num, user)
+
+            # Calcula mes anterior
+            if mes_num == 1:
+                mes_ant, ano_ant = 12, ano_selecionado - 1
+            else:
+                mes_ant, ano_ant = mes_num - 1, ano_selecionado
+
+            fechamento_ant = get_fechamento_mes(colls, ano_ant, mes_ant, user)
+
+            # Periodo: do fechamento do mes anterior ate o dia antes do fechamento do mes selecionado
+            try:
+                data_inicio = date(ano_ant, mes_ant, fechamento_ant)
+            except:
+                data_inicio = date(ano_ant, mes_ant, 28)
+
+            try:
+                data_fim = date(ano_selecionado, mes_num, fechamento_dia) - timedelta(days=1)
+            except:
+                data_fim = date(ano_selecionado, mes_num, 28) - timedelta(days=1)
+
+            # Mostra periodo
+            st.markdown(f'<p style="font-size: 11px; text-align: center; color: #888; margin-bottom: 16px;">Periodo: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}</p>', unsafe_allow_html=True)
+
+            # Filtro por categoria
+            st.markdown('<p class="section-title">🏷️ Filtrar por categoria</p>', unsafe_allow_html=True)
+            categorias_filtro = ["Todas"] + CATEGORIAS_DISPLAY
+            categoria_selecionada = st.selectbox("Categoria", categorias_filtro, key="extrato_categoria")
+
+            # Filtra registros do periodo selecionado
+            meus_registros_extrato = df[
+                (df["buyer"] == user) &
+                (df["createdAt"].dt.date >= data_inicio) &
+                (df["createdAt"].dt.date <= data_fim)
+            ].copy()
+
+            # Ordena por data decrescente (mais recentes primeiro)
+            if not meus_registros_extrato.empty:
+                meus_registros_extrato = meus_registros_extrato.sort_values("createdAt", ascending=False)
+
+            # Aplica filtro de categoria se selecionado
+            if categoria_selecionada != "Todas":
+                categoria_banco = categoria_para_banco(categoria_selecionada)
+                if not meus_registros_extrato.empty:
+                    meus_registros_extrato = meus_registros_extrato[meus_registros_extrato["label"] == categoria_banco]
+
+            # === RESUMO ===
+            st.markdown("---")
+            st.markdown('<p class="section-title">💰 Resumo do periodo</p>', unsafe_allow_html=True)
+
+            # Calcula totais
+            total_gastos = 0
+            total_cofrinho = 0
+            total_renda_variavel = 0
+
+            if not meus_registros_extrato.empty:
+                for _, desp in meus_registros_extrato.iterrows():
+                    valor_total = desp["total_value"]
+                    parcelas = desp.get("installment", 1) or 1
+                    tem_pendencia = desp.get("tem_pendencia", False)
+                    valor_pendente = desp.get("valor_pendente", 0) or 0
+                    categoria = desp.get("label", "")
+
+                    # Calcula valor da parcela
+                    if parcelas > 1:
+                        valor_considerar = valor_total / parcelas
+                    else:
+                        valor_considerar = valor_total
+
+                    # Se compra conjunta, desconta o que a outra pessoa deve
+                    if tem_pendencia and valor_pendente > 0:
+                        if parcelas > 1:
+                            valor_pendente_parcela = valor_pendente / parcelas
+                        else:
+                            valor_pendente_parcela = valor_pendente
+                        valor_considerar = valor_considerar - valor_pendente_parcela
+
+                    # Separa por tipo
+                    if "Cofrinho" in categoria:
+                        total_cofrinho += valor_considerar
+                    elif "Renda Variavel" in categoria:
+                        total_renda_variavel += valor_considerar
+                    else:
+                        total_gastos += valor_considerar
+
+            # Soma contas fixas no credito (se filtro permite)
+            contas_fixas_credito_extrato = 0
+            if categoria_selecionada == "Todas" or categoria_selecionada == "📄 Contas":
+                if not df_contas_fixas_extrato.empty:
+                    for _, conta in df_contas_fixas_extrato.iterrows():
+                        if conta.get("cartao_credito", False):
+                            if conta["responsavel"] == user:
+                                contas_fixas_credito_extrato += conta["valor"]
+                            elif conta["responsavel"] == "Dividido":
+                                contas_fixas_credito_extrato += conta["valor"] / 2
+                total_gastos += contas_fixas_credito_extrato
+
+            # Soma emprestimos a terceiros do periodo (se filtro permite)
+            emprestimos_terceiros_periodo = 0
+            if categoria_selecionada == "Todas" or categoria_selecionada == "🤝 Emprestei":
+                if not df_emp_terc.empty:
+                    df_emp_terc["data_emprestimo"] = pd.to_datetime(df_emp_terc["data_emprestimo"])
+                    emp_periodo = df_emp_terc[
+                        (df_emp_terc["data_emprestimo"].dt.date >= data_inicio) &
+                        (df_emp_terc["data_emprestimo"].dt.date <= data_fim)
+                    ]
+                    if not emp_periodo.empty:
+                        emprestimos_terceiros_periodo = emp_periodo["valor"].sum()
+                total_gastos += emprestimos_terceiros_periodo
+
+            # Exibe cards de resumo
+            cor_gastos = "linear-gradient(135deg, #c2185b 0%, #e91e63 100%)" if user == "Susanna" else "linear-gradient(135deg, #0277bd 0%, #03a9f4 100%)"
+            borda_gastos = "#f48fb1" if user == "Susanna" else "#4fc3f7"
+
+            st.markdown(f'''
+            <div style="display: flex; flex-direction: row; gap: 8px; width: 100%; margin-bottom: 16px;">
+                <div style="flex: 1; background: {cor_gastos}; padding: 12px; border-radius: 8px; color: white; border-left: 3px solid {borda_gastos};">
+                    <span style="font-size: 16px; opacity: 0.9;">💸 Gastos</span><br>
+                    <span style="font-size: 20px; font-weight: 600;">{fmt(total_gastos)}</span>
+                </div>
+                <div style="flex: 1; background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%); padding: 12px; border-radius: 8px; color: white; border-left: 3px solid #81c784;">
+                    <span style="font-size: 16px; opacity: 0.9;">🐷 Cofrinho</span><br>
+                    <span style="font-size: 20px; font-weight: 600;">{fmt(total_cofrinho)}</span>
+                </div>
+                <div style="flex: 1; background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); padding: 12px; border-radius: 8px; color: white; border-left: 3px solid #ffcc80;">
+                    <span style="font-size: 16px; opacity: 0.9;">💵 Extra</span><br>
+                    <span style="font-size: 20px; font-weight: 600;">{fmt(total_renda_variavel)}</span>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+
+            # === EXTRATO DETALHADO ===
+            st.markdown("---")
+            st.markdown('<p class="section-title">📋 Transacoes</p>', unsafe_allow_html=True)
+
+            if not meus_registros_extrato.empty or contas_fixas_credito_extrato > 0 or emprestimos_terceiros_periodo > 0:
+                # Lista todas as transacoes
+                transacoes = []
+
+                # Adiciona despesas normais
+                for _, desp in meus_registros_extrato.iterrows():
+                    valor_total = desp["total_value"]
+                    parcelas = desp.get("installment", 1) or 1
+                    tem_pendencia = desp.get("tem_pendencia", False)
+                    valor_pendente = desp.get("valor_pendente", 0) or 0
+
+                    # Calcula valor efetivo
+                    if parcelas > 1:
+                        valor_considerar = valor_total / parcelas
+                    else:
+                        valor_considerar = valor_total
+
+                    if tem_pendencia and valor_pendente > 0:
+                        if parcelas > 1:
+                            valor_pendente_parcela = valor_pendente / parcelas
+                        else:
+                            valor_pendente_parcela = valor_pendente
+                        valor_considerar = valor_considerar - valor_pendente_parcela
+
+                    # Formata descricao
+                    descricao = desp.get("item", "")
+                    if parcelas > 1:
+                        descricao += f" (parcela {parcelas}x)"
+                    if tem_pendencia:
+                        descricao += " 👯"
+
+                    transacoes.append({
+                        "data": desp["createdAt"],
+                        "descricao": descricao,
+                        "categoria": categoria_para_display(desp.get("label", "")),
+                        "valor": valor_considerar
+                    })
+
+                # Adiciona contas fixas (usa dia 1 do mes como data de referencia) - se filtro permite
+                if (categoria_selecionada == "Todas" or categoria_selecionada == "📄 Contas") and not df_contas_fixas_extrato.empty:
+                    for _, conta in df_contas_fixas_extrato.iterrows():
+                        if conta.get("cartao_credito", False):
+                            valor_conta = 0
+                            if conta["responsavel"] == user:
+                                valor_conta = conta["valor"]
+                            elif conta["responsavel"] == "Dividido":
+                                valor_conta = conta["valor"] / 2
+
+                            if valor_conta > 0:
+                                transacoes.append({
+                                    "data": datetime(ano_selecionado, mes_num, 1),
+                                    "descricao": f"{conta['nome']} (conta fixa)",
+                                    "categoria": "📄 Contas",
+                                    "valor": valor_conta
+                                })
+
+                # Adiciona emprestimos a terceiros do periodo - se filtro permite
+                if (categoria_selecionada == "Todas" or categoria_selecionada == "🤝 Emprestei") and not df_emp_terc.empty:
+                    emp_periodo = df_emp_terc[
+                        (df_emp_terc["data_emprestimo"].dt.date >= data_inicio) &
+                        (df_emp_terc["data_emprestimo"].dt.date <= data_fim)
+                    ]
+                    for _, emp in emp_periodo.iterrows():
+                        transacoes.append({
+                            "data": emp["data_emprestimo"],
+                            "descricao": f"Emprestimo para {emp.get('devedor', '?')}",
+                            "categoria": "🤝 Emprestei",
+                            "valor": emp["valor"]
+                        })
+
+                # Ordena por data decrescente
+                transacoes = sorted(transacoes, key=lambda x: x["data"], reverse=True)
+
+                # Exibe transacoes em cards
+                for trans in transacoes:
+                    data_fmt = trans["data"].strftime("%d/%m/%Y")
+                    cor_borda = "#f48fb1" if user == "Susanna" else "#4fc3f7"
+
+                    st.markdown(f'''
+                    <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 2px solid {cor_borda};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">{trans["descricao"]}</div>
+                                <div style="font-size: 11px; color: #aaa;">{data_fmt} • {trans["categoria"]}</div>
+                            </div>
+                            <div style="font-size: 15px; font-weight: 600; color: #ff5252; text-align: right;">
+                                {fmt(trans["valor"])}
+                            </div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                st.markdown(f'<p style="font-size: 10px; text-align: center; color: #666; margin-top: 16px;">{len(transacoes)} transacoes no periodo</p>', unsafe_allow_html=True)
+            else:
+                st.info("📝 Nenhuma transacao neste periodo.")
+
     # ========== CONFIG ==========
     elif menu == "⚙️ Config":
         st.markdown('<p class="page-title">⚙️ Configuracoes</p>', unsafe_allow_html=True)
@@ -2664,7 +3014,7 @@ def main():
 
             # ===== COMBUSTIVEL =====
             elif tipo == "combustivel":
-                st.markdown('<p class="section-title">⛽ Abastecimentos</p>', unsafe_allow_html=True)
+                st.markdown('<p class="section-title"></p>', unsafe_allow_html=True)
 
                 df_desp = pd.DataFrame(carregar_despesas(colls))
                 if not df_desp.empty:
