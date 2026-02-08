@@ -1079,9 +1079,11 @@ def main():
             with st.form("form_moto", clear_on_submit=True):
                 valor_moto = st.number_input("💵 Valor", min_value=0.01, value=30.00, format="%.2f", key="valor_moto")
                 pagamento_moto = st.selectbox("💳 Pagamento", ["Debito", "Credito", "Pix", "Dinheiro"], key="pag_moto")
+                data_moto = st.date_input("📅 Data", value=date.today(), format="DD/MM/YYYY", key="data_moto")
                 moto_submitted = st.form_submit_button("✅ Registrar", use_container_width=True)
 
             if moto_submitted:
+                data_moto_datetime = datetime.combine(data_moto, datetime.now().time())
                 colls["despesas"].insert_one({
                     "label": "Combustivel",
                     "buyer": user,
@@ -1091,7 +1093,7 @@ def main():
                     "total_value": valor_moto,
                     "payment_method": pagamento_moto,
                     "installment": 0,
-                    "createdAt": datetime.now(),
+                    "createdAt": data_moto_datetime,
                     "pagamento_compartilhado": "Pra mim",
                     "tem_pendencia": False,
                     "devedor": None,
@@ -1110,9 +1112,11 @@ def main():
             with st.form("form_carro", clear_on_submit=True):
                 valor_carro = st.number_input("💵 Valor", min_value=0.01, value=60.00, format="%.2f", key="valor_carro")
                 pagamento_carro = st.selectbox("💳 Pagamento", ["Debito", "Credito", "Pix", "Dinheiro"], key="pag_carro")
+                data_carro = st.date_input("📅 Data", value=date.today(), format="DD/MM/YYYY", key="data_carro")
                 carro_submitted = st.form_submit_button("✅ Registrar", use_container_width=True)
 
             if carro_submitted:
+                data_carro_datetime = datetime.combine(data_carro, datetime.now().time())
                 colls["despesas"].insert_one({
                     "label": "Combustivel",
                     "buyer": user,
@@ -1122,7 +1126,7 @@ def main():
                     "total_value": valor_carro,
                     "payment_method": pagamento_carro,
                     "installment": 0,
-                    "createdAt": datetime.now(),
+                    "createdAt": data_carro_datetime,
                     "pagamento_compartilhado": "Pra mim",
                     "tem_pendencia": False,
                     "devedor": None,
@@ -1154,6 +1158,7 @@ def main():
                 pagamento = st.selectbox("💳 Pagamento", ["VR", "Debito", "Credito", "Pix", "Dinheiro"])
                 tipo_despesa_display = st.selectbox("🤝 Tipo de compra", ["👤 Pra mim", "👯 Dividido (me deve metade)", "🎁 Pra outra (me deve tudo)"])
                 parcelas = st.number_input("📅 Parcelas", min_value=0, value=0)
+                data_compra = st.date_input("📅 Data da compra", value=date.today(), format="DD/MM/YYYY")
 
                 submitted = st.form_submit_button("✅ Salvar Gasto", use_container_width=True)
 
@@ -1171,10 +1176,13 @@ def main():
                     elif "Pra outra" in tipo_despesa_display:
                         pend = {"tem_pendencia": True, "devedor": outro, "valor_pendente": valor_total, "status_pendencia": "em aberto"}
 
+                    # Converte date para datetime mantendo a data selecionada
+                    data_compra_datetime = datetime.combine(data_compra, datetime.now().time())
+
                     doc = {
                         "label": label, "buyer": user, "item": item, "description": description,
                         "quantity": quantidade, "total_value": valor_total, "payment_method": pagamento,
-                        "installment": parcelas, "createdAt": datetime.now(), "pagamento_compartilhado": tipo_despesa, **pend
+                        "installment": parcelas, "createdAt": data_compra_datetime, "pagamento_compartilhado": tipo_despesa, **pend
                     }
 
                     result = colls["despesas"].insert_one(doc)
