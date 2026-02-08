@@ -1262,6 +1262,7 @@ def main():
                 responsavel = st.selectbox("👤 Responsavel", [user, outro, "Dividido"])
                 categoria_conta_display = st.selectbox("🏷️ Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"])
                 cartao_credito = st.checkbox("💳 Conta no cartao de credito", value=False, help="Marque se essa conta e paga no cartao de credito")
+                debito_automatico = st.checkbox("🏦 Debito automatico", value=False, help="Marque se essa conta e descontada automaticamente (nao aparece na fatura estimada)")
                 obs_conta = st.text_input("💬 Observacao")
 
                 cf_submitted = st.form_submit_button("✅ Cadastrar", use_container_width=True)
@@ -1272,6 +1273,7 @@ def main():
                     "nome": nome_conta, "valor": valor_conta, "dia_vencimento": dia_vencimento,
                     "responsavel": responsavel, "categoria": categoria_conta, "observacao": obs_conta,
                     "cartao_credito": cartao_credito,
+                    "debito_automatico": debito_automatico,
                     "ativo": True, "createdAt": datetime.now()
                 }
                 colls["contas_fixas"].insert_one(conta_fixa)
@@ -2011,11 +2013,12 @@ def main():
             if not df_user.empty:
                 credito_avista = df_user[(df_user["payment_method"] == "Credito") & ((df_user["installment"] == 0) | (df_user["installment"] == 1))]["total_value"].sum()
 
-            # Contas fixas no cartao de credito
+            # Contas fixas no cartao de credito (exceto debito automatico)
             contas_fixas_credito = 0
             if not df_contas_fixas.empty:
                 for _, conta in df_contas_fixas.iterrows():
-                    if conta.get("cartao_credito", False):
+                    # So adiciona na fatura se for cartao de credito E nao for debito automatico
+                    if conta.get("cartao_credito", False) and not conta.get("debito_automatico", False):
                         if conta["responsavel"] == user:
                             contas_fixas_credito += conta["valor"]
                         elif conta["responsavel"] == "Dividido":
@@ -3246,6 +3249,7 @@ def main():
                                 new_resp = st.selectbox("Responsavel", [user, outro, "Dividido"], index=[user, outro, "Dividido"].index(conta.get("responsavel", user)) if conta.get("responsavel") in [user, outro, "Dividido"] else 0, key=f"cf_resp_{conta_id}")
                                 new_cat = st.selectbox("Categoria", ["📄 Contas", "💊 Saude", "📦 Outros"], index=["📄 Contas", "💊 Saude", "📦 Outros"].index(cat_display) if cat_display in ["📄 Contas", "💊 Saude", "📦 Outros"] else 0, key=f"cf_cat_{conta_id}")
                                 new_cartao = st.checkbox("Conta no cartao de credito", value=conta.get("cartao_credito", False), key=f"cf_cartao_{conta_id}")
+                                new_debito_auto = st.checkbox("Debito automatico", value=conta.get("debito_automatico", False), key=f"cf_debito_{conta_id}")
                                 new_obs = st.text_input("Observacao", value=conta.get("observacao", ""), key=f"cf_obs_{conta_id}")
 
                                 btn_salvar = st.form_submit_button("💾 Salvar", use_container_width=True)
@@ -3261,6 +3265,7 @@ def main():
                                             "responsavel": new_resp,
                                             "categoria": remover_emoji(new_cat),
                                             "cartao_credito": new_cartao,
+                                            "debito_automatico": new_debito_auto,
                                             "observacao": new_obs
                                         }}
                                     )
